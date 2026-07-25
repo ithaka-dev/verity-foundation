@@ -132,6 +132,20 @@ confidence no boundary justifies. No limits is the correct interim posture; a fa
 than none. If a bound is needed before AA lands, it belongs somewhere the agent cannot reach, such
 as the funded balance of the testnet key.
 
+**But design every account-related seam for smart accounts even so**
+([ADR 0005](docs/decisions/0005-design-for-smart-accounts-implement-eoa.md)). Never call
+`ecrecover` directly — route through a helper that can dispatch to ERC-1271 and ERC-6492. Never
+assume a signature implies a recoverable key, that an address implies deployed code, that the
+holder pays their own gas, or that one key equals one identity. Keep the payment method behind an
+interface: EIP-3009 is *an implementation*, not the shape. Where the smart-account branch is not
+built, **reject explicitly** with a "not supported in MVP" error rather than falling through to an
+EOA assumption.
+
+The obligation is strongest for **templates and anything third parties write against** — those are
+unpatchable once copied, so a template teaching `ecrecover` breaks every app built on it at the
+mainnet gate. It is weakest for our own services, which we can rewrite. This makes the app template
+the highest-leverage artifact in the project: review it harder than internal code, not less.
+
 **Rules for agents:**
 - Never create a sibling repo without being asked. Propose it and record the decision in `docs/decisions/`.
 - When a repo moves from `planned` to `active`, update this table in the same change.

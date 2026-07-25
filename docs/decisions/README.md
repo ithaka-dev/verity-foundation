@@ -26,6 +26,7 @@ must be updated to point at it. Silence is how decisions get relitigated by acci
 | [0002](0002-defer-account-abstraction.md) | Defer account abstraction out of MVP | accepted |
 | [0003](0003-holder-initiated-upgrades.md) | Upgrades are holder-initiated; developer conduct is out of scope | accepted |
 | [0004](0004-upgrade-mechanics.md) | Upgrade mechanics: burn is a developer knob; registry risk accepted | accepted |
+| [0005](0005-design-for-smart-accounts-implement-eoa.md) | Design account logic for smart accounts; implement EOA only in MVP | accepted |
 
 Add a row when you add an ADR.
 
