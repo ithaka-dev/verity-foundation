@@ -9,6 +9,14 @@ contract, and the historical record.
 Read it before doing anything substantive. Its §2 records settled decisions and §7 records
 invariants — do not silently reopen either. Flag disagreement explicitly instead.
 
+> **Before touching the verifier or `AppManifest`, read
+> [RFC license-attestation-binding](records/rfcs/2026-07-25-license-attestation-binding.md).**
+> The licensed object (an image digest, §2.2) and the attested object (`MR-CONFIG-ID`, derived from
+> the whole `app-compose.json`) are not the same thing. A verifier comparing only the image digest
+> passes deployments of the right image in a *wrong environment* — different env vars, volumes,
+> ports, or an added sidecar. That is a partial version of the skip §4.5 warns degrades the system
+> to "login plus a container spawn."
+
 ---
 
 ## 0. Sibling projects
