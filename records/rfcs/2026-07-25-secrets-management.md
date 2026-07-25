@@ -147,9 +147,18 @@ irreducible. This is Tier 2's destination, not a replacement for Tier 1.
    real value, alongside AA. The only argument against deferring is lead time: hardware procurement
    or multisig signer coordination is not same-day work, so start it when the gate comes into view
    rather than at it.
-2. **Is the testnet `AppManifest` key really Tier 1?** It is cheap *now*, but if the testnet
-   deployment is ever demoed as evidence the system works, its compromise becomes a credibility
-   problem rather than a financial one.
+2. ~~**Is the testnet `AppManifest` key really Tier 1?**~~ **Settled 2026-07-25: yes, Tier 1 — with
+   one hard rule attached.** A testnet key is genuinely cheap: no funds, and a compromise is
+   recoverable by redeploying.
+
+   **The rule: a testnet key is never promoted to mainnet.** Not the deployer, not the manifest
+   writer, not the smart-account owner. Promotion is the failure mode that turns a correctly-classified
+   Tier 1 secret into an uncontrolled Tier 0 one — and it happens for the most reasonable-sounding
+   reason available, which is that the contracts are already deployed and working.
+
+   Second, weaker: **rotate before any public demo.** The credibility concern is real — a testnet
+   deployment shown as evidence the system works becomes something an attacker can embarrass — but
+   it is a reputational risk with a cheap mitigation, not grounds for Tier 0 handling.
 3. ~~**Age key bootstrap.**~~ **Settled 2026-07-25: derive host age keys from SSH host keys.**
    Standard `sops-nix` practice, and the SSH host key already exists at first boot, so there is no
    chicken-and-egg problem and nothing extra to hold. Accepted coupling: rotating a host's SSH key

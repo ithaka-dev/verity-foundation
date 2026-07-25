@@ -249,8 +249,13 @@ one. Tiering already delivers most of the low-friction benefit.
    make that an explicit app requirement rather than promise exactly-once delivery and quietly break
    it. Apps would be written assuming a guarantee that does not hold — worse than no guarantee.
    The template must demonstrate idempotent migration, not merely mention the requirement.
-4. **Does the holder ever see `needs_holder_action` directly,** or does it surface through the UI
-   ([RFC ui-scope](2026-07-25-ui-scope.md))? A new human surface, if so.
+4. ~~**Does the holder ever see `needs_holder_action` directly?**~~ **Settled 2026-07-25: through
+   the orchestrator into the UI, never direct.** The app is not reachable by the holder — it sits
+   inside a CVM behind an endpoint the holder may never call — so a direct channel does not exist to
+   use. The orchestrator receives the tri-state, records it against the license, and the upgrade
+   flow ([RFC ui-scope](2026-07-25-ui-scope.md)) surfaces it. It must also be **emitted as
+   telemetry**: an app parked in `needs_holder_action` is indistinguishable from a slow migration
+   until someone looks.
 5. ~~**Which repo?**~~ **Settled 2026-07-25: `verity-app-template`, its own repo.** Not folded into
    `verity-tool-<name>`. Examples that are also production code drift toward being neither — the
    example accretes real-world complexity that obscures the teaching, and the product gets
@@ -263,13 +268,24 @@ one. Tiering already delivers most of the low-friction benefit.
    entitlements retained, holder notified, retry permitted — which is safe precisely because apps
    are required to be idempotent (Q3). The two-instance window persists across retries; that is the
    benign failure state the ordering was designed to land in, not an anomaly to clean up.
-7. **Does the CVM get RPC access, and can it trust what it hears?** Mandatory holder resolution
-   means level-2 apps need chain reads from inside the enclave. That introduces an availability
-   dependency, leaks which licenses are being checked to whoever serves the RPC, and — the part
-   that actually matters — lets a lying RPC misreport ownership at the moment the app is making a
-   security decision. Options: multiple independent RPCs, a light client, or the orchestrator
-   supplying a signed chain-state proof the app verifies offline. Moot while the orchestrator is
-   trusted (§2.9); not moot under §2.8's endgame.
+7. ~~**Does the CVM get RPC access, and can it trust what it hears?**~~ **Settled 2026-07-25: yes,
+   and the RPC endpoint is pinned in `app-compose.json` — therefore measured.**
+
+   The concern was real: a lying RPC could misreport ownership at the moment the app makes a
+   security decision, and the app has no independent view of the chain. What resolves it is not a
+   better RPC but *where the choice is recorded*. Because the compose is hashed into `composeHash`
+   and that is what the license binds to, **pinning the RPC endpoint in the compose makes the app's
+   trust dependency part of what the holder licenses and the verifier checks.**
+
+   That converts a hidden dependency into a disclosed one. A holder can see which RPC their app will
+   believe *before purchase*, and changing it is a new version rather than a silent operational
+   act. It does not make a lying RPC impossible; it makes the choice auditable and non-repudiable,
+   which is the same posture the rest of the system takes toward trust.
+
+   Residuals, accepted: availability (an unreachable RPC blocks holder resolution) and the privacy
+   leak of which licenses are being checked. Both argue for multiple pinned endpoints. A light
+   client or orchestrator-supplied signed state proofs remain the v2 hardening — worth doing when
+   §2.8's endgame makes the orchestrator untrusted in practice rather than in principle.
 8. ~~**Should the app watch the chain directly and self-migrate?**~~ **Closed 2026-07-25: no
    automigration, in any form.** See "Minting is not consent to migrate" above. The practical
    objection — it obliges every level-2 app to run a chain watcher — is real but secondary; the

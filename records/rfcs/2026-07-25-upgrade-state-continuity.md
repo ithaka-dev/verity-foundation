@@ -198,10 +198,17 @@ objection confused "coordinates a mechanical sequence" with "exercises judgement
    independently probes `health`. Two signals, because the failure self-reporting cannot cover is
    the app crashing and reporting nothing. Still relevant for *schema transformation*, which is now
    the only thing `migrate` does.
-4. **Does `deployer_id` stay stable across a developer's versions?** **Still open, and now narrower.**
-   `app_id` was measured stable across an in-place upgrade, but `deployer_id` was not observed
-   directly. It matters if an app is ever transferred to another developer, or if a developer
-   rotates keys — either would be a second moving part in state access.
+4. ~~**Does `deployer_id` stay stable across a developer's versions?**~~ **Largely answered
+   2026-07-25.** The `key-provider` event decodes to `{"name":"kms","id":"<P-256 public key>"}` and
+   was **byte-identical across two independent deployments and across an in-place upgrade** — so the
+   KMS identity is stable and needs no pinning. `app_id` was likewise stable across upgrade, on both
+   0.5.6 and 0.5.7.
+
+   **Residual, narrow but real:** transfer of an *app* between developers was not tested and is not
+   a described operation. If it changes the deployer component of key derivation, it would strand
+   state. Do not build developer-to-developer app transfer without testing this first — note it is
+   distinct from *license* transfer between holders (§2.6), which is a first-class feature and does
+   not touch key derivation.
 5. ~~**What is the rollback story?**~~ **Settled: `AppManifest` logic, the developer's to define**
    ([ADR 0004](../../docs/decisions/0004-upgrade-mechanics.md)). Note backward state migration is
    not realistic — v1.0 cannot read what v1.1 wrote and no `migrate` hook runs in reverse — so
@@ -209,18 +216,23 @@ objection confused "coordinates a mechanical sequence" with "exercises judgement
 6. ~~**Does the key transition need the holder's signature?**~~ **Closed: there is no key transition.**
 7. ~~**Who triggers the burn?**~~ **Closed: nobody separately — `AppManifest` burns and mints
    atomically** ([ADR 0008](../../docs/decisions/0008-upgrade-is-in-place.md)).
-8. **Does `app_id` preservation hold across dstack versions?** New, and the most important one here.
-   Measured on 0.5.7 only. The failure mode of a change is *silent data loss*, so this must be
-   re-verified on every version bump rather than assumed.
+8. ~~**Does `app_id` preservation hold across dstack versions?**~~ **Answered 2026-07-25, and it
+   surfaced a bigger problem**
+   ([experiment](../experiments/2026-07-25-cross-version-upgrade.md)). Preservation holds on 0.5.6
+   exactly as on 0.5.7, and `compose-hash` is byte-identical across both — so a version record stays
+   valid across a platform upgrade.
 
-## Outcome
+   **But the OS image cannot be changed on an existing CVM.** `phala deploy --cvm-id … --image`
+   fails client-side validation, and `phala cvms upgrade` exposes no image parameter. The in-place
+   path changes the *compose*, not the platform beneath it.
 
-*Unresolved — awaiting review. Open question 1 gates the `AppManifest` upgrade interface, which is
-build-order step 1; settle it before contracts are finalized.*
-
----
-
-**Sources consulted:**
-[Phala — Key Management Protocol / DeRoT](https://docs.phala.com/phala-cloud/key-management/key-management-protocol) ·
-[dstack decentralized root of trust design](https://github.com/Phala-Network/phala-docs/blob/main/dstack/design-documents/decentralized-root-of-trust.md) ·
-[Phala — verifying with MR-CONFIG-ID](https://phala.com/posts/mr-config-id-tutorial)
+   > **A licensed instance therefore appears pinned for life to the dstack version it was created
+   > on**, which puts §2.5 ("keep dstack current") against §2.6 ("durable, owned possession"). If
+   > patching dstack needs a new CVM, it needs a new `app_id`, which by
+   > [ADR 0008](../../docs/decisions/0008-upgrade-is-in-place.md) means no access to prior state.
+   > The holder's choice becomes: stay on a known-vulnerable platform, or take the patch and lose
+   > your data.
+   >
+   > **Scope:** established for the CLI, not the platform — the failure is a CLI-side schema check,
+   > so it may be a CLI defect. Confirm against the Cloud API directly (`phala api`) before treating
+   > it as a design constraint. **This is now the most important open question in the project.**

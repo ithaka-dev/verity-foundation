@@ -393,12 +393,28 @@ Design is settled; these are the open items, and most are measurements rather th
 ~~**Blocking the verifier.**~~ **Closed** (ADR 0009): `MR-CONFIG-ID` is populated and is V1, carried in the RA-TLS leaf certificate. The verifier compares 48 bytes computed from the published compose. Nothing blocks the verifier now.
 
 **Verify before the component that depends on it:**
-- Does `app_id` preservation hold across dstack versions? (Silent data loss if not.)
-- Does `deployer_id` stay stable across a developer's versions, and across app transfer?
-- Does `--custom-app-id` + `--nonce` give a derivable `app_id`, making a reference pre-computable?
+- ~~Does `app_id` preservation hold across dstack versions?~~ **Yes** — confirmed on 0.5.6 and 0.5.7, with `compose-hash` byte-identical across both.
+- ~~Does `deployer_id` stay stable?~~ **Largely yes** — the `key-provider` identity was byte-identical across two deployments and an upgrade. Untested residual: transfer of an *app* between developers, which is not a described operation and should not be built without testing.
+- ~~Does `--custom-app-id` + `--nonce` give a derivable `app_id`?~~ **Moot** — `MR-CONFIG-ID` is V1 and does not include `app_id` (ADR 0009).
 - Do deployed x402 facilitators implement ERC-7710? (Gates the AA payment path.)
 - Can ERC-7710 caveats express all five envelope dimensions of §2.7?
 
-**Open design questions, none blocking:** whether the CVM gets RPC access and can trust it; whether the holder view needs an indexer; whether the UI can be a static IPFS bundle; how `needs_holder_action` surfaces; whether the testnet manifest key is really low-value.
+> ### ⚠ The largest open problem: platform upgrades may strand state
+>
+> **The OS image cannot be changed on an existing CVM** — `phala deploy --cvm-id … --image` fails
+> client-side validation and `phala cvms upgrade` accepts no image parameter. The in-place path
+> changes the *compose*, not the platform beneath it. A licensed instance therefore appears pinned
+> for life to the dstack version it was created on.
+>
+> That puts **§2.5** ("keep dstack current; treat attestation as revocable") directly against
+> **§2.6** (instances are durable, owned possessions). If patching dstack requires a new CVM it
+> requires a new `app_id`, which by ADR 0008 means no access to prior state. The holder chooses
+> between a known-vulnerable platform and losing their data.
+>
+> **Established for the CLI, not the platform** — the failure is a CLI-side schema check, so it may
+> be a CLI defect. Confirm against the Cloud API directly before treating it as a design
+> constraint. ([Experiment](../records/experiments/2026-07-25-cross-version-upgrade.md).)
+
+**Open design questions:** ~~all previously listed are now settled~~ — CVM RPC access (pinned in the measured compose), holder-view indexer (optional, non-authoritative, replaceable), static IPFS UI bundle (yes, a constraint not an aspiration), `needs_holder_action` surfacing (orchestrator → UI, plus telemetry), testnet key tier (Tier 1, never promoted to mainnet). See the RFCs in [`../records/rfcs/`](../records/rfcs/).
 
 **Gate items for real value:** account abstraction (§2.7), Tier 0 key custody, the spend-envelope surface (§4.8).
