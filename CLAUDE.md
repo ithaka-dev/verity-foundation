@@ -79,9 +79,16 @@ affordance and no "keep my tools current" toggle; both reintroduce what ADR 0003
 **Upgrade logic is `AppManifest` bookkeeping and never touches a running VM**
 ([ADR 0004](docs/decisions/0004-upgrade-mechanics.md)). The developer controls exactly two
 independent knobs: `upgradePrice(from, to)` — a discount keyed on current holdings — and whether
-the old entitlement is burned. Note that *not* burning grants an additional runnable instance
-under §2.9's one-license-one-instance rule, so a developer giving away free minor versions without
-burning is giving away concurrency. Reference implementation defaults to burn.
+the old entitlement is burned. **Burn is the default** (settled 2026-07-25); developers may opt
+out, and the developer surface must state the consequence where the knob is set: *not* burning
+grants an additional runnable instance under §2.9's one-license-one-instance rule, so free minor
+versions without burning give away concurrency.
+
+**Order the upgrade: mint → deploy → migrate state → verify → burn. Never burn first, and do not
+make burn atomic with mint.** dStack seals state under a key derived from the image measurement,
+so a new digest means a new key and the old state does not follow by default. Burning before
+migration is verified strands that state under a key only an image the holder no longer has the
+right to run can derive. See [RFC upgrade-state-continuity](records/rfcs/2026-07-25-upgrade-state-continuity.md).
 
 Registry withdrawal and developer misbehavior are **accepted out of scope**, not deferred: if the
 holder trusts the developer, that is sufficient. The marketplace handles bad developers, not the
