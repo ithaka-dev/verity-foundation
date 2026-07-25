@@ -76,6 +76,17 @@ indefinitely. Developer conduct within their own versions is out of scope — Ve
 *what you licensed is what runs*, never *what you licensed is good*. Build no auto-update
 affordance and no "keep my tools current" toggle; both reintroduce what ADR 0003 refuses.
 
+**Upgrade logic is `AppManifest` bookkeeping and never touches a running VM**
+([ADR 0004](docs/decisions/0004-upgrade-mechanics.md)). The developer controls exactly two
+independent knobs: `upgradePrice(from, to)` — a discount keyed on current holdings — and whether
+the old entitlement is burned. Note that *not* burning grants an additional runnable instance
+under §2.9's one-license-one-instance rule, so a developer giving away free minor versions without
+burning is giving away concurrency. Reference implementation defaults to burn.
+
+Registry withdrawal and developer misbehavior are **accepted out of scope**, not deferred: if the
+holder trusts the developer, that is sufficient. The marketplace handles bad developers, not the
+protocol.
+
 **Custody is settled: nothing custodial or semi-custodial.** Account abstraction is the ceiling —
 no embedded wallets, no social-recovery services, no semi-custodial accounts. §2.7's argument is
 that the spend boundary is only real at a layer the agent cannot edit; an operator-held key moves
