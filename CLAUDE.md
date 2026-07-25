@@ -265,6 +265,11 @@ Beyond the product invariants in spec §7:
 - **C3.** The sibling-project table in §0 is accurate or it is a bug.
 - **C4.** Never describe Verity as "trustless" anywhere in this repo — "trust-minimized" or
   "verifiable" only (spec §2.5, I6).
+- **C6.** The defining property is written **`licensed_composeHash == attested_composeHash`**. The
+  older `licensed_digest == attested_digest` is imprecise — the binding target is the configuration,
+  not the image alone (spec §2.2) — and survives only inside immutable records in
+  `docs/decisions/` and `records/`, which are not to be rewritten. Use the current form in anything
+  new, especially user-facing text.
 - **C5.** **Agents get no Tier 1 (operator) secrets** — no registry credentials, RPC keys, deploy
   keys, or SSH keys. An agent holding one is a prompt-injection path into infrastructure, and there
   is no spend-envelope equivalent bounding it. Agents receive what a specific task requires, handed

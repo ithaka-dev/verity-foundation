@@ -53,10 +53,20 @@ Therefore:
 Not a design — a list of what the system will need to be able to answer about itself.
 
 - **Did the loop close?** Rate of attestation verifications, split by pass and fail. A failing
-  verification is the single most important event in the system: it means `licensed_digest !=
-  attested_digest`, and it must alert.
+  verification is the single most important event in the system: it means `licensed_composeHash !=
+  attested_composeHash`, and it must alert.
+- **Which check failed?** Not just pass/fail. Spec §4.5 verification is a list — event-log replay,
+  compose hash, the compose↔`imageDigest` cross-check, `os-image-hash` — and *which* one failed
+  distinguishes a misconfiguration from an attack. A single boolean throws that away.
+- **Is any verifier loosening its checks?** Track which comparisons each verifier performs, not only
+  their outcomes. Spec §4.5 warns that `mr-kms` variance produces spurious mismatches, and the
+  tempting fix is to relax a check until it passes — which is invisible in a pass/fail metric,
+  because everything starts succeeding.
 - **Where did purchases go?** Spend per session key against its envelope (spec §2.7), since
-  overspend-by-injection is the top residual risk (spec §8).
-- **Is the orchestrator honest?** Every deploy's digest, correlated to the `AppManifest` entry it
+  overspend-by-injection is the top residual risk (spec §8). *Note: no envelope exists while AA is
+  deferred — until then this measures unbounded spend against a testnet balance.*
+- **Was any upgrade performed as a fresh deploy?** Spec I9. It succeeds silently while destroying
+  holder state, so it will never appear as an error and must be detected as a pattern.
+- **Is the orchestrator honest?** Every deploy's configuration, correlated to the `AppManifest` entry it
   claims to have come from — the observable form of invariant I3.
 - **Did state survive?** CVM restart and state-reconstitution outcomes (spec §5, item 7).

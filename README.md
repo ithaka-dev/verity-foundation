@@ -7,10 +7,15 @@ inside attested confidential VMs.
 The defining property:
 
 ```
-licensed_digest == attested_digest
+licensed_composeHash == attested_composeHash
 ```
 
 What you own and what is actually executing are cryptographically the same thing.
+
+The licensed object is an exact **configuration** — an `app-compose.json` in which every image is
+pinned by digest — because that configuration is what the platform measures, and because the right
+image running in a wrong environment is not the thing you licensed.
+
 Read [`docs/Verity-spec.md`](docs/Verity-spec.md) for the full specification.
 
 ## What lives here

@@ -15,12 +15,12 @@ Verity is a decentralized, censorship-resistant application marketplace built fo
 **The defining property** (the reason this project exists, and the invariant every design decision must protect):
 
 ```
-licensed_digest == attested_digest
+licensed_composeHash == attested_composeHash
 ```
 
 A license names an exact **configuration** — `app-compose.json`, inside which every image is pinned by digest. The confidential VM that boots must hardware-attest to that configuration. The buying agent verifies the attestation against the licensed `composeHash` **before trusting the endpoint**. What you own and what is actually executing are cryptographically the same thing. No app store can offer this; a plain web app cannot prove it.
 
-⟳ *The binding is to the configuration, not the image alone, because the configuration is what the platform measures — and because the right image in a wrong environment is not the thing you licensed. See §2.2.*
+⟳ **This was previously stated as `licensed_digest == attested_digest`.** The thesis is unchanged; the referent is now correct. The binding is to the configuration rather than the image alone, because the configuration is what the platform measures — and because the right image in a wrong environment is not the thing you licensed (§2.2). Documents in [`decisions/`](decisions/) and [`../records/`](../records/) written before this revision use the older phrasing; they are immutable records of how the change was reached, and mean the same thing.
 
 ### The primary scenario ⟳
 
