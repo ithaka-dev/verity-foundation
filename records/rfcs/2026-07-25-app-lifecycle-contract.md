@@ -75,6 +75,60 @@ verifies it, or verifies against the chain directly. This is I3's spirit ("never
 input") applied one layer in: the orchestrator is a *carrier* of chain-derived facts, not an
 *author* of them.
 
+### Mechanism
+
+The orchestrator posts to `migrate` a payload containing the license token identity and a
+**holder-signed authorization**. The app recovers the signer and proceeds only if that signer is
+the license's current holder.
+
+**Sign an EIP-712 typed struct, not a raw message.** The struct must bind every dimension an
+attacker could otherwise vary:
+
+| Field | Why it must be in the signature |
+|---|---|
+| `licenseId` | which entitlement authorizes this |
+| `fromDigest` | the instance being migrated *from* — without it, a signature is reusable against a different instance the same holder owns |
+| `toDigest` | the version being migrated *to* |
+| `instanceId` | binds to one specific running instance |
+| `nonce` | prevents replay of a previously valid authorization |
+| `expiry` | bounds the window in which a leaked signature is useful |
+| `chainId` | prevents cross-chain replay (EIP-712 domain) |
+
+EIP-712 also renders the authorization human-readably at signing time, which matters here because
+a person is the signer and the action mutates their data.
+
+### Two corrections to the naive version
+
+**1. The on-chain check is mandatory, not optional — because licenses transfer.**
+
+The instinct is that an app can compare the recovered signer against an owner address baked in at
+deploy time, calling the chain only "if needed." That is incorrect under §2.6, which makes
+transferability a *feature*: transfer the token, transfer the living instance. A baked-in owner
+means the **previous** holder can still sign valid migrations after selling the license — and the
+new holder's instance obeys them.
+
+So the app resolves the current holder from chain state. The recovered signer must match *whoever
+holds the license now*, not whoever held it at deploy time. Ownership is chain state, and chain
+state is the only place to read it.
+
+**2. `ecrecover` alone repeats the x402 mistake, one layer up.**
+
+`ecrecover` recovers an ECDSA signer and works only for an EOA. The moment a holder's account is an
+ERC-4337 smart account, there is no key to recover and verification silently has no valid path —
+**exactly** the failure documented in
+[RFC non-custodial-payments](2026-07-25-non-custodial-payments.md), where x402's recommended
+EIP-3009 method turned out to be EOA-only.
+
+[ADR 0002](../../docs/decisions/0002-defer-account-abstraction.md) defers AA, so `ecrecover` is
+sufficient for MVP — but AA is a *hard gate* on real value under that ADR, which means every
+level-2 app written against `ecrecover` alone breaks at the gate. Since apps are third-party
+software we cannot patch, this is far worse than it was for our own payment code.
+
+**Therefore: verification goes through a helper in the template that dispatches on account type —
+`ecrecover` for EOAs, ERC-1271 `isValidSignature` for contract accounts.** MVP may implement only
+the first branch, but the *shape* must accommodate the second from the first published template.
+This is the cheapest possible moment to get it right and there is no second one.
+
 ### Publish the reference, not just the spec
 
 An interface nobody implements correctly is worse than none, because the platform starts making
@@ -155,6 +209,18 @@ one. Tiering already delivers most of the low-friction benefit.
    example," and examples that are also production code drift toward being neither.
 6. **Timeouts.** A migration that hangs is indistinguishable from one that is slow. Who decides
    when to give up, and what happens to the two-instance window meanwhile?
+7. **Does the CVM get RPC access, and can it trust what it hears?** Mandatory holder resolution
+   means level-2 apps need chain reads from inside the enclave. That introduces an availability
+   dependency, leaks which licenses are being checked to whoever serves the RPC, and — the part
+   that actually matters — lets a lying RPC misreport ownership at the moment the app is making a
+   security decision. Options: multiple independent RPCs, a light client, or the orchestrator
+   supplying a signed chain-state proof the app verifies offline. Moot while the orchestrator is
+   trusted (§2.9); not moot under §2.8's endgame.
+8. **Should the app watch the chain directly instead?** A mint is already a holder-initiated
+   on-chain event (ADR 0003), so an app could self-migrate on observing it and need no relayed
+   signature at all — arguably purer, since the chain *is* the authorization. Rejected as the
+   default because it obliges every level-2 app to run a chain watcher, which is a heavy floor for
+   "implement two endpoints." Worth keeping as an option for apps that already read chain state.
 
 ## Outcome
 
