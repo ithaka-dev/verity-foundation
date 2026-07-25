@@ -95,11 +95,22 @@ out, and the developer surface must state the consequence where the knob is set:
 grants an additional runnable instance under §2.9's one-license-one-instance rule, so free minor
 versions without burning give away concurrency.
 
-**Order the upgrade: mint → deploy → migrate state → verify → burn. Never burn first, and do not
-make burn atomic with mint.** dStack seals state under a key derived from the image measurement,
-so a new digest means a new key and the old state does not follow by default. Burning before
-migration is verified strands that state under a key only an image the holder no longer has the
-right to run can derive. See [RFC upgrade-state-continuity](records/rfcs/2026-07-25-upgrade-state-continuity.md).
+**Upgrade ordering is an open fork, pending one measurement.** dStack seals state under a key
+derived from the image measurement, so a new digest means a new key and old state does not follow
+by default. Whether burn may be atomic with mint depends entirely on this:
+
+> **Can a new instance read the old volume directly, granted the previous epoch's key — or does
+> migration require the old instance to be live?**
+
+- **Directly** → `AppManifest` burns and mints in one transaction; migration follows and is
+  retryable, since nothing depends on holding the old license. Simpler, and drops the
+  completion-attestation machinery entirely.
+- **Old instance needed** → burning first makes migration structurally impossible, and the ordering
+  must be mint → deploy → migrate → verify → burn.
+
+Do not write `AppManifest`'s upgrade interface until this is settled on the simulator. See
+[RFC upgrade-state-continuity](records/rfcs/2026-07-25-upgrade-state-continuity.md) open question 2,
+which gates [ADR 0006](docs/decisions/0006-appmanifest-version-record.md) item 4.
 
 **No automigration, in any form.** Minting is *not* consent to migrate — those are two distinct
 holder acts ("I want this version" vs. "move this instance's data and retire the old one"), and a

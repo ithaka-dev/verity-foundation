@@ -160,8 +160,35 @@ objection confused "coordinates a mechanical sequence" with "exercises judgement
    it; the ergonomics decide whether steps 3–4 are a few lines or a project. **Verify before
    `AppManifest`'s upgrade interface is finalized** — this is the item with a deadline.
 2. **Does migration need both instances live simultaneously,** or can the new instance be granted
-   the previous epoch's key and read the old volume directly? Determines whether the two-instance
-   window is essential or merely convenient.
+   the previous epoch's key and read the old volume directly?
+
+   > **Escalated 2026-07-25 — this is now the decisive question for the whole RFC, and for
+   > [ADR 0006](../../docs/decisions/0006-appmanifest-version-record.md) item 4.** It is no longer a
+   > detail about a two-instance window; it decides the contract's upgrade interface.
+   >
+   > **Branch A — the new instance can read the old volume directly.** Then `AppManifest` can burn
+   > and mint atomically in one transaction, and migration happens afterwards, retryable
+   > indefinitely because nothing in it depends on holding the old license. This is strictly
+   > simpler: it deletes the completion-attestation mechanism, the app-side signing key, the
+   > permissionless burn submission, and the gas question — and keeps the level-2 conformance bar
+   > low, which matters because ADR 0005 makes the template unpatchable once copied.
+   >
+   > **Branch B — migration requires the old instance live.** Then burning first makes migration
+   > structurally impossible: the holder cannot deploy v1.0 without a v1.0 license, so there is
+   > nothing to migrate *from*. The mint → deploy → migrate → verify → burn ordering becomes
+   > mandatory, along with the completion-attestation machinery.
+   >
+   > **Correction to this RFC's original reasoning.** The stranding argument above assumed the
+   > holder could not recover because they would have no right to run the old image. That conflated
+   > *Verity's* deployment policy with *dStack's* key derivation — they are decoupled, and the
+   > former is ours to choose. The real constraint is only this question.
+   >
+   > Evidence currently leans toward Branch A: DeRoT is documented as enabling "upgraded
+   > applications to decrypt saved states in a controllable way," which describes a new app reading
+   > old state rather than a handoff between live instances. That is a design-doc phrase, not a
+   > tested behaviour, and the cost of being wrong is a contract redeployment.
+   >
+   > **Settle empirically before `AppManifest` is written.**
 3. **Who verifies step 4?** Holder-side check, orchestrator-side, or the app asserting its own
    readiness. Note that an app self-reporting success is the weakest option and the easiest to
    implement, which is a bad combination.
