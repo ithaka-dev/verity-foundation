@@ -225,15 +225,30 @@ one. Tiering already delivers most of the low-friction benefit.
 
 ## Open questions
 
-1. **Transport.** How does the orchestrator reach the app — HTTP on a known port inside the CVM,
-   the dStack guest agent, a file or socket convention? Constrains what a template can even look
-   like, so it comes first.
-2. **Where is conformance declared** — `AppManifest` (on-chain, costs a contract field), the
-   `llms.txt` discovery manifest (free, but not authoritative), or the measured compose config
-   (attested, but awkward to query before deploy)? Leaning toward the compose config as truth with
-   the manifest as an index, but this needs deciding before contracts freeze.
-3. **Idempotency and retry.** If the platform may retry `migrate`, apps must tolerate it. Is that
-   a requirement on apps, or does the platform promise exactly-once?
+1. ~~**Transport.**~~ **Settled 2026-07-25: the dStack guest agent.** Chosen over HTTP on a known
+   internal port. The deciding argument is that dStack is already a hard dependency (§9, §4.4) — the
+   entire attestation model is dStack-specific — so HTTP's portability advantage is largely
+   illusory, while the guest agent is platform-native and may provide an authenticated channel
+   bound to CVM identity.
+
+   Accepted costs: the template couples app authors to Phala's SDK, local testing needs the
+   simulator rather than plain `docker run`, and moving off dStack later would touch every level-1+
+   app. Mitigation: **keep the handler logic transport-agnostic in the template**, with the guest
+   agent as a thin adapter — the same shape as `services/` in the control center, where MCP and
+   HTTP sit over shared handlers.
+
+   **This does not weaken the proof requirement.** An attested or authenticated channel establishes
+   *who is speaking*, not *that what they say is authorized*. The orchestrator remains untrusted
+   under §2.8, so the holder's EIP-712 authorization is still what the app verifies. A secure
+   channel to an untrusted party does not make the party trusted.
+2. ~~**Where is conformance declared?**~~ **Settled by
+   [ADR 0006](../../docs/decisions/0006-appmanifest-version-record.md): on-chain in the
+   `AppManifest` version record, as a capability bitmap.**
+3. ~~**Idempotency and retry.**~~ **Settled 2026-07-25: apps must be idempotent; the platform may
+   retry.** Retries are unavoidable across a chain-and-enclave boundary, and the honest move is to
+   make that an explicit app requirement rather than promise exactly-once delivery and quietly break
+   it. Apps would be written assuming a guarantee that does not hold — worse than no guarantee.
+   The template must demonstrate idempotent migration, not merely mention the requirement.
 4. **Does the holder ever see `needs_holder_action` directly,** or does it surface through the UI
    ([RFC ui-scope](2026-07-25-ui-scope.md))? A new human surface, if so.
 5. **Which repo?** Proposed: a new `verity-app-template` sibling. Alternatively the MVP tool

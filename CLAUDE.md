@@ -35,7 +35,7 @@ under `~/Developer/src/github.com/ithaka-dev/`.
 | `verity-payments` | x402 purchase endpoint: the 402-gated resource **is** the signed mint authorization, so payment and entitlement are one act. Spec §4.2, invariant I4. | planned |
 | `verity-verifier` | Agent-side attestation verification library — the crown jewel. Input: endpoint + evidence + licensed digest. Output: boolean, refuse on mismatch. Spec §4.5. | planned |
 | `verity-ui` | Human surfaces. Direction: onboarding-forward — many surfaces, each replaceable. Scope under discussion in [RFC 2026-07-25 ui-scope](records/rfcs/2026-07-25-ui-scope.md). | reserved, RFC open |
-| `verity-app-template` | Reference implementation of the app lifecycle contract (`health`, `migrate`), plus documented failure modes. Proposed in [RFC app-lifecycle-contract](records/rfcs/2026-07-25-app-lifecycle-contract.md); name and existence not yet settled. | proposed |
+| `verity-app-template` | Reference implementation of the app lifecycle contract (`health`, `migrate`) over the **dStack guest agent**, with idempotent migration demonstrated and failure modes documented. Handler logic stays transport-agnostic; the guest agent is a thin adapter. Per [ADR 0005](docs/decisions/0005-design-for-smart-accounts-implement-eoa.md) this is the project's highest-leverage artifact — unpatchable once copied, so review it harder than internal code. | proposed |
 | `verity-tool-<name>` | A published tool image — the MVP's one non-GPU deterministic utility. One repo per tool. Spec §5. | planned |
 
 ### The orchestrator boundary
@@ -244,3 +244,8 @@ Beyond the product invariants in spec §7:
 - **C3.** The sibling-project table in §0 is accurate or it is a bug.
 - **C4.** Never describe Verity as "trustless" anywhere in this repo — "trust-minimized" or
   "verifiable" only (spec §2.5, I6).
+- **C5.** **Agents get no Tier 1 (operator) secrets** — no registry credentials, RPC keys, deploy
+  keys, or SSH keys. An agent holding one is a prompt-injection path into infrastructure, and there
+  is no spend-envelope equivalent bounding it. Agents receive what a specific task requires, handed
+  over explicitly and revoked after. Never a shared key, and never "just temporarily."
+  ([RFC secrets-management](records/rfcs/2026-07-25-secrets-management.md) Q4.)

@@ -189,9 +189,13 @@ objection confused "coordinates a mechanical sequence" with "exercises judgement
    > tested behaviour, and the cost of being wrong is a contract redeployment.
    >
    > **Settle empirically before `AppManifest` is written.**
-3. **Who verifies step 4?** Holder-side check, orchestrator-side, or the app asserting its own
-   readiness. Note that an app self-reporting success is the weakest option and the easiest to
-   implement, which is a bad combination.
+3. ~~**Who verifies step 4?**~~ **Settled 2026-07-25: the app reports, the orchestrator
+   corroborates.** The app returns the tri-state (`complete` / `failed` / `needs_holder_action`) —
+   only it can know whether its data arrived — and the orchestrator independently probes `health`.
+   Two signals rather than one, because the failure that self-reporting cannot cover is the app
+   crashing mid-migration and reporting nothing at all. Neither signal is proof; together they
+   distinguish "migration failed" from "instance died," which are different problems with different
+   responses.
 4. **Does `deployer_id` stay stable across a developer's versions?** It is a KDF input alongside
    `app_hash`. If it can change — key rotation, compromise, transfer of the app to another
    developer — then migration has a second moving part.

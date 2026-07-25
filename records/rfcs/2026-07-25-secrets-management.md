@@ -147,11 +147,14 @@ irreducible. This is Tier 2's destination, not a replacement for Tier 1.
    problem rather than a financial one.
 3. **Age key bootstrap.** Derive host keys from SSH host keys (convenient, couples the two) or
    manage separate age identities (cleaner, one more thing to hold)?
-4. **Do agents get secrets at all?** This project runs autonomous agents (`records/experiments/`).
-   An agent with a Tier 1 key is a prompt-injection path into infrastructure — the same threat
-   class as §8's top residual risk, applied to credentials instead of spend. Current
-   recommendation: **no**, agents get no Tier 1 access, and if that becomes limiting the answer is
-   a scoped credential with its own envelope, not a shared key.
+4. ~~**Do agents get secrets at all?**~~ **Settled 2026-07-25: no Tier 1 access for agents.**
+   An agent holding an infrastructure credential is a prompt-injection path into infrastructure —
+   the same threat class as §8's top residual risk, pointed at credentials instead of spend, and
+   with no envelope to bound it since [ADR 0002](../../docs/decisions/0002-defer-account-abstraction.md)
+   deferred that machinery. Agents get what a specific task requires, handed over explicitly and
+   revoked after. If this becomes genuinely limiting, the answer is scoped, short-lived, revocable
+   per-task credentials with their own envelope — never a shared key, and never "temporarily" for
+   convenience.
 5. **Rotation cadence**, and who is responsible for it. An unrotated key is the default state of
    every secrets system nobody assigned an owner.
 
