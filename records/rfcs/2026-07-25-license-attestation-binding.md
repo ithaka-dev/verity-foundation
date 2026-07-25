@@ -62,10 +62,27 @@ post-hoc check into a pre-commitment — a stronger claim, and a much better dem
 
 ## Verifier rules
 
+> **Revised 2026-07-25 after measurement.** Rule 1 as originally written does not apply on dstack
+> 0.5.7: the attestation API exposes no `MR-CONFIG-ID`. The measured model is below; rules 2 and 3
+> stand unchanged and rule 3 matters more, not less.
+>
+> **Rule 1 (measured).** Verify against the **RTMR3 event log**:
+> - replay the log and confirm it reconstructs the reported `rtmr3`;
+> - check `compose-hash` equals `sha256` of the fetched `app-compose.json`, and that this equals the
+>   licensed `composeHash` — **confirmed reproducible in practice**;
+> - check the compose references the licensed `imageDigest`
+>   ([ADR 0007](../../docs/decisions/0007-compose-must-pin-digests.md));
+> - check `os-image-hash` against the published dstack image list, and `key-provider` / `storage-fs`
+>   against expectations;
+> - **read** `app-id` and `instance-id` rather than predicting them — both are per-deployment.
+>
+> `MRTD` and `RTMR0–2` were stable across deploys and are legitimately comparable to references.
+
 Three, and the third is the one that will be violated under deadline pressure.
 
-1. **Compare `MR-CONFIG-ID` against the pre-computed reference.** Per Phala's guidance this needs no
-   runtime event-log replay, which makes the correct approach also the simpler one.
+1. ~~**Compare `MR-CONFIG-ID` against the pre-computed reference.**~~ Superseded — see the revision
+   note above. Retained because it remains correct *if* a later dstack version exposes the field,
+   which is exactly the open question.
 2. **Do not compare RTMR3.** Event #6 (`mr-kms`) varies per boot because the CVM records whichever
    KMS instance it reached. Phala states plainly that you cannot pre-compute an RTMR3 reference from
    an application manifest. A verifier that includes RTMR3 in its comparison produces intermittent
@@ -105,16 +122,29 @@ Three, and the third is the one that will be violated under deadline pressure.
 
 ## Open questions
 
-1. **Where do `app_id`, `kp_type`, and `kp_id` come from** for the V2 formula? They are stable
-   across boots but are deployment parameters. If they are not pinned or independently known, V2's
-   `MR-CONFIG-ID` is not fully pre-computable and part of this proposal does not hold. **Verify
-   first** — it decides whether the manifest must pin them too.
-2. **Is V1 or V2 in play** for our deployments? V1 depends only on the compose and is trivially
-   pre-computable; V2 pulls in three more inputs. This may be forced by whether KMS is used, in
-   which case it is V2 and question 1 becomes mandatory.
-3. **Does anything in `app-compose.json` legitimately vary per deployment?** If any field must
-   differ between two instances of the same licensed version, `compose_hash` cannot be a single
-   pinned value and the design needs a canonical-form or template mechanism.
+1. ~~**Where do `app_id`, `kp_type`, and `kp_id` come from?**~~ **Measured 2026-07-25**
+   ([experiment](../experiments/2026-07-25-tdx-measurement-and-state-continuity.md)). `app_id` is
+   assigned **per deployment** — two byte-identical composes produced different `app_id`s — so it
+   cannot be derived from the compose. `key-provider` and `storage-fs` were stable; `mr-kms` varies
+   per boot. Practical effect is smaller than feared: on 0.5.7 the verifier reads `app-id` from the
+   event log and compares it, rather than needing it to *compute* a reference. Still worth testing
+   `--custom-app-id` + `--nonce` (deterministic `app_id`), which would make a reference
+   pre-computable.
+2. ~~**Is V1 or V2 in play?**~~ **Neither, on dstack 0.5.7 — and this reframes the RFC.** The Phala
+   Cloud attestation API exposes `mrtd`, `rtmr0-3`, a named RTMR3 event log, and the full
+   `app_compose`. **It does not expose `MR-CONFIG-ID` at all.** Verification is event-log replay
+   against RTMR3, checking individual events (`compose-hash`, `os-image-hash`, `key-provider`), not
+   comparison of one pre-computed field.
+
+   **Still open:** whether `MR-CONFIG-ID` is populated in the raw quote on 0.5.7 and merely
+   unexposed, or arrives in a later dstack version. This decides which verification model the
+   verifier library implements — and the event-log model is strictly more work, since it requires
+   replaying and validating a log rather than comparing 48 bytes.
+3. ~~**Does anything in `app-compose.json` legitimately vary per deployment?**~~ **Closed: no.** Two
+   deploys of an identical compose produced byte-identical `app_compose`, and locally computed
+   `sha256(app_compose)` exactly matched the `compose-hash` measured into RTMR3. **The `composeHash`
+   binding in [ADR 0006](../../docs/decisions/0006-appmanifest-version-record.md) is confirmed
+   sound, and no canonical-form mechanism is needed.**
 4. ~~**Where is the compose published?**~~ **Settled 2026-07-25: IPFS, CID committed on-chain in the
    `AppManifest` record, referenced directly.** Content-addressed, so integrity is chain-anchored
    and a wrong fetch is detectable. Referenced *from the manifest record*, not through the

@@ -1,10 +1,33 @@
 # RFC: Upgrade state continuity
 
-**Status:** draft
+**Status:** **superseded in its core proposal by [ADR 0008](../../docs/decisions/0008-upgrade-is-in-place.md)**
 **Date:** 2026-07-25
 **Author:** Claude (agent), for review by Peter
 **Relates to:** spec §2.6, §2.9, §4.4, §5; [ADR 0003](../../docs/decisions/0003-holder-initiated-upgrades.md),
 [ADR 0004](../../docs/decisions/0004-upgrade-mechanics.md)
+
+> ## ⚠️ Read this before the rest
+>
+> **The Problem and Proposal sections below rest on a model that measurement disproved.** They are
+> preserved unedited because `records/` is append-only and because the reasoning was sound given
+> what was known — but do not implement from them.
+>
+> The assumption was that a changed `app_hash` rotates the sealing key, stranding state unless
+> explicitly migrated. That produced an elaborate design: a two-instance window, a
+> mint → deploy → migrate → verify → burn ordering, completion attestations, an app-side signing key.
+>
+> **What actually happens** ([experiment](../experiments/2026-07-25-tdx-measurement-and-state-continuity.md)):
+> state continuity follows **`app_id`, not `compose_hash`**. dStack upgrades **in place**, preserving
+> `app_id`, `instance_id` and the encrypted volume. State carries over with no migration call at all.
+>
+> So: `AppManifest` burns and mints atomically, there is no second instance, and the elaborate
+> ordering was not merely unnecessary but *destructive* — a freshly deployed CVM gets a new `app_id`
+> and cannot read the prior state, so the "migration" would have had nothing to read.
+>
+> **What survives from this RFC:** the §2.6 framing (state lineage is the durable primitive and an
+> upgrade must not sever it), the observation that the `migrate` hook belongs to the app rather than
+> the orchestrator, the failure-policy reasoning, and the Open questions section, which has been
+> updated to reflect the measurements.
 
 ## Problem
 
@@ -156,73 +179,39 @@ objection confused "coordinates a mechanical sequence" with "exercises judgement
 
 ## Open questions
 
-1. **What does dStack's controlled migration actually require in practice?** The design supports
-   it; the ergonomics decide whether steps 3–4 are a few lines or a project. **Verify before
-   `AppManifest`'s upgrade interface is finalized** — this is the item with a deadline.
-2. **Does migration need both instances live simultaneously,** or can the new instance be granted
-   the previous epoch's key and read the old volume directly?
+> **Mostly closed 2026-07-25 by
+> [experiment: TDX measurement and state continuity](../experiments/2026-07-25-tdx-measurement-and-state-continuity.md)
+> and [ADR 0008](../../docs/decisions/0008-upgrade-is-in-place.md).** State continuity follows
+> `app_id`, not `compose_hash`. dStack upgrades in place, preserving `app_id`, `instance_id` and the
+> encrypted volume. There is no key transition to invoke, no second instance, and no separate burn
+> trigger — the questions below that assumed otherwise were resting on a model that does not match
+> the platform.
 
-   > **Escalated 2026-07-25 — this is now the decisive question for the whole RFC, and for
-   > [ADR 0006](../../docs/decisions/0006-appmanifest-version-record.md) item 4.** It is no longer a
-   > detail about a two-instance window; it decides the contract's upgrade interface.
-   >
-   > **Branch A — the new instance can read the old volume directly.** Then `AppManifest` can burn
-   > and mint atomically in one transaction, and migration happens afterwards, retryable
-   > indefinitely because nothing in it depends on holding the old license. This is strictly
-   > simpler: it deletes the completion-attestation mechanism, the app-side signing key, the
-   > permissionless burn submission, and the gas question — and keeps the level-2 conformance bar
-   > low, which matters because ADR 0005 makes the template unpatchable once copied.
-   >
-   > **Branch B — migration requires the old instance live.** Then burning first makes migration
-   > structurally impossible: the holder cannot deploy v1.0 without a v1.0 license, so there is
-   > nothing to migrate *from*. The mint → deploy → migrate → verify → burn ordering becomes
-   > mandatory, along with the completion-attestation machinery.
-   >
-   > **Correction to this RFC's original reasoning.** The stranding argument above assumed the
-   > holder could not recover because they would have no right to run the old image. That conflated
-   > *Verity's* deployment policy with *dStack's* key derivation — they are decoupled, and the
-   > former is ours to choose. The real constraint is only this question.
-   >
-   > Evidence currently leans toward Branch A: DeRoT is documented as enabling "upgraded
-   > applications to decrypt saved states in a controllable way," which describes a new app reading
-   > old state rather than a handoff between live instances. That is a design-doc phrase, not a
-   > tested behaviour, and the cost of being wrong is a contract redeployment.
-   >
-   > **Settle empirically before `AppManifest` is written.**
-3. ~~**Who verifies step 4?**~~ **Settled 2026-07-25: the app reports, the orchestrator
-   corroborates.** The app returns the tri-state (`complete` / `failed` / `needs_holder_action`) —
-   only it can know whether its data arrived — and the orchestrator independently probes `health`.
-   Two signals rather than one, because the failure that self-reporting cannot cover is the app
-   crashing mid-migration and reporting nothing at all. Neither signal is proof; together they
-   distinguish "migration failed" from "instance died," which are different problems with different
-   responses.
-4. **Does `deployer_id` stay stable across a developer's versions?** It is a KDF input alongside
-   `app_hash`. If it can change — key rotation, compromise, transfer of the app to another
-   developer — then migration has a second moving part.
-5. ~~**What is the rollback story?**~~ **Settled 2026-07-25: rollback is `AppManifest` logic, and
-   therefore the developer's to define.** A third knob alongside upgrade pricing and burn
-   ([ADR 0004](../../docs/decisions/0004-upgrade-mechanics.md)). The protocol needs no new rule —
-   `upgradePrice(from, to)` is already directional, so a downgrade is simply a transition where
-   `to` is older, and the developer decides whether it is permitted, priced, or refused.
-
-   **One consequence that belongs in developer documentation rather than the contract: backward
-   state migration is not realistic.** v1.0 cannot read what v1.1 wrote, and no `migrate` hook runs
-   in reverse. So even where a developer permits rollback, the holder gets the old *version* with
-   *fresh* state. A developer who advertises rollback without saying this is promising something
-   the platform does not deliver.
-6. **Can dStack's key transition be invoked on an attested identity alone, or does it need the
-   holder's signature?** This decides whether the holder disappears after minting or has to
-   reappear mid-flow. Folded into open question 1 as the same verification exercise.
-7. **Who triggers the burn?** The ordering requires burn to come after verified migration, so it
-   cannot be atomic with mint. Three options:
-   - **Holder sends a second transaction** after verification. Safe, holder-controlled, and costs
-     one extra user action. **Recommended for MVP** — the friction buys irreversibility protection.
-   - **Orchestrator is authorized to burn** on successful migration. One user action, but it hands
-     the orchestrator destructive authority over property. §2.9 already accepts trusted
-     orchestrator enforcement for concurrency, but refusing to deploy and destroying an entitlement
-     are different magnitudes. Revisit once the orchestrator is attested (§2.8).
-   - **Time-based lock/expiry** of the old entitlement. No verification signal at all; rejected as
-     the weakest of the three.
+1. ~~**What does dStack's controlled migration require in practice?**~~ **Closed: nothing.** The
+   volume carries over on an in-place upgrade with no explicit call. Measured.
+2. ~~**Does migration need both instances live simultaneously?**~~ **Closed: no — and there is no
+   second instance at all.** Branch A confirmed, though by a different mechanism than either branch
+   described. The alternative design was not merely unnecessary but destructive: a freshly deployed
+   CVM receives a *new* `app_id` and cannot read the prior state.
+3. ~~**Who verifies step 4?**~~ **Settled: the app reports, the orchestrator corroborates.** The app
+   returns the tri-state (`complete` / `failed` / `needs_holder_action`); the orchestrator
+   independently probes `health`. Two signals, because the failure self-reporting cannot cover is
+   the app crashing and reporting nothing. Still relevant for *schema transformation*, which is now
+   the only thing `migrate` does.
+4. **Does `deployer_id` stay stable across a developer's versions?** **Still open, and now narrower.**
+   `app_id` was measured stable across an in-place upgrade, but `deployer_id` was not observed
+   directly. It matters if an app is ever transferred to another developer, or if a developer
+   rotates keys — either would be a second moving part in state access.
+5. ~~**What is the rollback story?**~~ **Settled: `AppManifest` logic, the developer's to define**
+   ([ADR 0004](../../docs/decisions/0004-upgrade-mechanics.md)). Note backward state migration is
+   not realistic — v1.0 cannot read what v1.1 wrote and no `migrate` hook runs in reverse — so
+   rollback yields the old *version* with *fresh* state. Belongs in developer documentation.
+6. ~~**Does the key transition need the holder's signature?**~~ **Closed: there is no key transition.**
+7. ~~**Who triggers the burn?**~~ **Closed: nobody separately — `AppManifest` burns and mints
+   atomically** ([ADR 0008](../../docs/decisions/0008-upgrade-is-in-place.md)).
+8. **Does `app_id` preservation hold across dstack versions?** New, and the most important one here.
+   Measured on 0.5.7 only. The failure mode of a change is *silent data loss*, so this must be
+   re-verified on every version bump rather than assumed.
 
 ## Outcome
 
