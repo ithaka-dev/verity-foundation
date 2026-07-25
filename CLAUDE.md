@@ -25,6 +25,7 @@ under `~/Developer/src/github.com/ithaka-dev/`.
 | `verity-payments` | x402 purchase endpoint: the 402-gated resource **is** the signed mint authorization, so payment and entitlement are one act. Spec §4.2, invariant I4. | planned |
 | `verity-verifier` | Agent-side attestation verification library — the crown jewel. Input: endpoint + evidence + licensed digest. Output: boolean, refuse on mismatch. Spec §4.5. | planned |
 | `verity-ui` | Human surfaces. Direction: onboarding-forward — many surfaces, each replaceable. Scope under discussion in [RFC 2026-07-25 ui-scope](records/rfcs/2026-07-25-ui-scope.md). | reserved, RFC open |
+| `verity-app-template` | Reference implementation of the app lifecycle contract (`health`, `migrate`), plus documented failure modes. Proposed in [RFC app-lifecycle-contract](records/rfcs/2026-07-25-app-lifecycle-contract.md); name and existence not yet settled. | proposed |
 | `verity-tool-<name>` | A published tool image — the MVP's one non-GPU deterministic utility. One repo per tool. Spec §5. | planned |
 
 ### The orchestrator boundary

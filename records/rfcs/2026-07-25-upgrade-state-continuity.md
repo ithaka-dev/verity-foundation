@@ -107,8 +107,9 @@ further user input is needed *for the migration itself*.
 
 - **App-level data transformation.** If the new version restructures what the old one wrote, only
   the app can do that. The orchestrator can hand a new image an old volume; it cannot reshape the
-  contents. This is an app-author responsibility and belongs in developer documentation, because
-  the default assumption will be that the platform handles it.
+  contents. **Addressed by [RFC app-lifecycle-contract](2026-07-25-app-lifecycle-contract.md)** —
+  the app implements a `migrate` hook the orchestrator signals, which puts the work where the
+  knowledge is without giving the orchestrator either judgement or plaintext.
 - **Failure policy** — what happens when step 3 or 4 fails. This *is* orchestrator policy, but a
   fixed, documented, deterministic policy is not the discretion §2.8 forbids. §2.8 forbids
   authority that cannot be derived from chain state, not the existence of defined behavior. Write
