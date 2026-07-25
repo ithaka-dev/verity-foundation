@@ -24,7 +24,7 @@ under `~/Developer/src/github.com/ithaka-dev/`.
 | `verity-orchestrator` | Watches license state, resolves digest from `AppManifest`, deploys to Phala dStack, enforces naive concurrency, returns endpoint + attestation evidence. Centralized v1, designed for replacement — see the boundary rule below. Spec §4.3, §2.8. | planned |
 | `verity-payments` | x402 purchase endpoint: the 402-gated resource **is** the signed mint authorization, so payment and entitlement are one act. Spec §4.2, invariant I4. | planned |
 | `verity-verifier` | Agent-side attestation verification library — the crown jewel. Input: endpoint + evidence + licensed digest. Output: boolean, refuse on mismatch. Spec §4.5. | planned |
-| `verity-ui` | Name reserved; scope deliberately undecided. See the open question below before putting anything in it. | reserved |
+| `verity-ui` | Human surfaces. Direction: onboarding-forward — many surfaces, each replaceable. Scope under discussion in [RFC 2026-07-25 ui-scope](records/rfcs/2026-07-25-ui-scope.md). | reserved, RFC open |
 | `verity-tool-<name>` | A published tool image — the MVP's one non-GPU deterministic utility. One repo per tool. Spec §5. | planned |
 
 ### The orchestrator boundary
@@ -44,23 +44,29 @@ Hence `verity-orchestrator` is its own repo, and:
 A change that makes the orchestrator depend on another service's data layer or on caller-supplied
 input is wrong regardless of how convenient it is.
 
-### Open question: `verity-ui` scope
+### The UI boundary
 
-Reserved, not scoped. Needs a research pass before anything lands in it. The reason it is not
-simply "the marketplace frontend": spec §4.6 has no catalog and no search — discovery is an
-`llms.txt` manifest on IPFS — so a browsing UI may be at odds with the design rather than missing
-from it.
+Direction is onboarding-forward: build many human surfaces and make them good. Scope is being
+worked out in [RFC 2026-07-25 ui-scope](records/rfcs/2026-07-25-ui-scope.md); until that lands,
+these are the parts that constrain any UI work regardless of scope.
 
-What is *not* optional is that two human surfaces are load-bearing and **absent from spec §5**:
+**The test every surface must pass:** *if `verity-ui` disappeared tomorrow, would anything a
+developer or holder created stop working?* Yes ⇒ gatekeeper. No ⇒ tool. Spec §1 forbids the
+former anywhere in the path.
 
-- **Spend envelope** (§2.7) — setting five-dimensional policy on an ERC-4337 session key. This is
-  the only human-in-the-loop moment in the entire system, and the last control standing between a
-  prompt-injected agent and irreversible spend (§8's top residual risk).
-- **Upgrade opt-in** (§2.3) — the MVP mitigation for a hostile "minor" release is *manual holder
-  opt-in*. Manual by whom, in what?
+**The risk is convenience, not count.** Ten surfaces wrapping public contract calls centralize
+nothing; one surface dramatically easier than the alternative becomes the path in practice however
+optional it is on paper. So each surface shows the underlying contract call or CLI equivalent,
+exports its state, is self-hostable, and is never authoritative — the chain is.
 
-Plus a developer publishing surface (deploy `AppManifest`, append version→digest, set upgrade
-pricing). Raise all of this when the spec is next reviewed.
+**Two words to avoid.** "Registration" implies someone can decline it — say *publishing tool*;
+what is produced exists independently of whoever hosted the form. "Catalog" implies you must be
+listed to be found — say *index*; §4.6 forbids a required catalog, not an optional observer.
+
+**Two surfaces are load-bearing and absent from spec §5:** the spend envelope (§2.7 — the only
+human-in-the-loop moment in the system, and **non-custodial is non-negotiable**, since §2.7's
+argument dies if the operator can edit the boundary) and upgrade opt-in (§2.3). Raise both when
+the spec is next reviewed.
 
 **Rules for agents:**
 - Never create a sibling repo without being asked. Propose it and record the decision in `docs/decisions/`.
