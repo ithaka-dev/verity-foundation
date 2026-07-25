@@ -75,14 +75,46 @@ verifies it, or verifies against the chain directly. This is I3's spirit ("never
 input") applied one layer in: the orchestrator is a *carrier* of chain-derived facts, not an
 *author* of them.
 
+### Minting is not consent to migrate
+
+**There is no automigration, in any form.** An app must never migrate because it observed a mint,
+and the orchestrator must never initiate one it was not explicitly asked to perform.
+
+These are two distinct acts by the holder, and collapsing them is wrong even though both are
+holder-initiated:
+
+| Act | What the holder is saying |
+|---|---|
+| **Mint** the new license | "I want this version." |
+| **Authorize** migration | "Move *this instance's* data from A to B, and retire the old one." |
+
+A holder may legitimately want the new version without wanting their running instance touched —
+to hold it, to evaluate it alongside, or to migrate later at a quieter moment. Treating the mint as
+implied consent takes that choice away, and does so at the worst moment: under burn-by-default
+([ADR 0004](../../docs/decisions/0004-upgrade-mechanics.md)), a single mint would cascade into
+moving live data *and* destroying the previous entitlement. That is far too much consequence for
+one signature.
+
+This does not contradict [ADR 0003](../../docs/decisions/0003-holder-initiated-upgrades.md) — it
+narrows it. ADR 0003 forbids *auto-follow* (acting on a developer's publish). This forbids
+*auto-migrate* (acting on the holder's own mint). The second is not covered by the first, which is
+exactly why it needs saying: an implementation could satisfy ADR 0003 to the letter and still
+migrate someone's data without asking.
+
+**Consequence: the upgrade flow is three holder interactions** — mint (transaction), migration
+authorization (signature, no gas), burn (transaction, after verification). That is real friction
+and it is deliberate; each step consents to a different irreversible thing. The right remedy is a
+guided multi-step flow in the UI ([RFC ui-scope](2026-07-25-ui-scope.md)), not fewer consents.
+
 ### Mechanism
 
 The orchestrator posts to `migrate` a payload containing the license token identity and a
 **holder-signed authorization**. The app recovers the signer and proceeds only if that signer is
-the license's current holder.
+the license's current holder. The signature *is* the second consent above — which is why it is
+signed by the holder and merely relayed by the orchestrator.
 
-**Sign an EIP-712 typed struct, not a raw message.** The struct must bind every dimension an
-attacker could otherwise vary:
+**The authorization is an EIP-712 typed struct — settled 2026-07-25, not a raw signed message.**
+The struct must bind every dimension an attacker could otherwise vary:
 
 | Field | Why it must be in the signature |
 |---|---|
@@ -216,11 +248,10 @@ one. Tiering already delivers most of the low-friction benefit.
    security decision. Options: multiple independent RPCs, a light client, or the orchestrator
    supplying a signed chain-state proof the app verifies offline. Moot while the orchestrator is
    trusted (§2.9); not moot under §2.8's endgame.
-8. **Should the app watch the chain directly instead?** A mint is already a holder-initiated
-   on-chain event (ADR 0003), so an app could self-migrate on observing it and need no relayed
-   signature at all — arguably purer, since the chain *is* the authorization. Rejected as the
-   default because it obliges every level-2 app to run a chain watcher, which is a heavy floor for
-   "implement two endpoints." Worth keeping as an option for apps that already read chain state.
+8. ~~**Should the app watch the chain directly and self-migrate?**~~ **Closed 2026-07-25: no
+   automigration, in any form.** See "Minting is not consent to migrate" above. The practical
+   objection — it obliges every level-2 app to run a chain watcher — is real but secondary; the
+   decisive one is that observing a mint and acting on it collapses two distinct consents into one.
 
 ## Outcome
 

@@ -91,6 +91,22 @@ so a new digest means a new key and the old state does not follow by default. Bu
 migration is verified strands that state under a key only an image the holder no longer has the
 right to run can derive. See [RFC upgrade-state-continuity](records/rfcs/2026-07-25-upgrade-state-continuity.md).
 
+**No automigration, in any form.** Minting is *not* consent to migrate — those are two distinct
+holder acts ("I want this version" vs. "move this instance's data and retire the old one"), and a
+holder may legitimately want the new version without their running instance being touched. An app
+must never migrate because it observed a mint; the orchestrator must never initiate one it was not
+asked to perform. This narrows rather than restates ADR 0003: that ADR forbids *auto-follow* on a
+developer's publish, this forbids *auto-migrate* on the holder's own mint, and an implementation
+can satisfy the first to the letter while still moving someone's data unasked.
+
+Migration is authorized by a **holder-signed EIP-712 typed struct** (settled) binding `licenseId`,
+`fromDigest`, `toDigest`, `instanceId`, `nonce`, `expiry`, `chainId` — relayed by the orchestrator,
+never authored by it. The app resolves the *current* holder from chain state before accepting it:
+licenses transfer (§2.6), so a deploy-time owner would let a previous holder sign migrations after
+selling. Verify via a helper that dispatches on account type — `ecrecover` for EOAs, ERC-1271 for
+contract accounts — even while [ADR 0002](docs/decisions/0002-defer-account-abstraction.md) makes
+only the first branch reachable. See [RFC app-lifecycle-contract](records/rfcs/2026-07-25-app-lifecycle-contract.md).
+
 Registry withdrawal and developer misbehavior are **accepted out of scope**, not deferred: if the
 holder trusts the developer, that is sufficient. The marketplace handles bad developers, not the
 protocol.
