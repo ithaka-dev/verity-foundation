@@ -44,6 +44,13 @@ Hence `verity-orchestrator` is its own repo, and:
 A change that makes the orchestrator depend on another service's data layer or on caller-supplied
 input is wrong regardless of how convenient it is.
 
+**One misreading to guard against.** The orchestrator resolves the digest **bound to the holder's
+license**, never the newest entry in `AppManifest`. §4.3's "reads digest from `AppManifest` — never
+from user input" is about refusing caller-supplied images; it must not be read as "read the app's
+current version." An orchestrator that deploys the latest manifest entry has implemented
+auto-follow through the back door — breaking [ADR 0003](docs/decisions/0003-holder-initiated-upgrades.md)
+while still satisfying every word of I3.
+
 ### The UI boundary
 
 Direction is onboarding-forward: build many human surfaces and make them good. Scope is being
@@ -63,9 +70,11 @@ exports its state, is self-hostable, and is never authoritative — the chain is
 what is produced exists independently of whoever hosted the form. "Catalog" implies you must be
 listed to be found — say *index*; §4.6 forbids a required catalog, not an optional observer.
 
-**Two surfaces are load-bearing and absent from spec §5:** the spend envelope (§2.7 — the only
-human-in-the-loop moment in the system) and upgrade opt-in (§2.3). Raise both when the spec is
-next reviewed.
+**Upgrades are the holder's decision alone** ([ADR 0003](docs/decisions/0003-holder-initiated-upgrades.md)).
+No auto-follow at any tier, ever; doing nothing keeps a holder on the exact digest they licensed,
+indefinitely. Developer conduct within their own versions is out of scope — Verity guarantees
+*what you licensed is what runs*, never *what you licensed is good*. Build no auto-update
+affordance and no "keep my tools current" toggle; both reintroduce what ADR 0003 refuses.
 
 **Custody is settled: nothing custodial or semi-custodial.** Account abstraction is the ceiling —
 no embedded wallets, no social-recovery services, no semi-custodial accounts. §2.7's argument is

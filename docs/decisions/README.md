@@ -24,6 +24,7 @@ must be updated to point at it. Silence is how decisions get relitigated by acci
 |---|---|---|
 | [0001](0001-control-center-stack.md) | Control center stack | accepted |
 | [0002](0002-defer-account-abstraction.md) | Defer account abstraction out of MVP | accepted |
+| [0003](0003-holder-initiated-upgrades.md) | Upgrades are holder-initiated; developer conduct is out of scope | accepted |
 
 Add a row when you add an ADR.
 
