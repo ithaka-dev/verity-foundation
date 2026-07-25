@@ -10,8 +10,14 @@ Read it before doing anything substantive. Its §2 records settled decisions and
 invariants — do not silently reopen either. Flag disagreement explicitly instead.
 
 > **Before touching the verifier or `AppManifest`, read
-> [ADR 0006](docs/decisions/0006-appmanifest-version-record.md) and
+> [ADR 0006](docs/decisions/0006-appmanifest-version-record.md),
+> [ADR 0007](docs/decisions/0007-compose-must-pin-digests.md), and
 > [RFC license-attestation-binding](records/rfcs/2026-07-25-license-attestation-binding.md).**
+> **Every image reference in a published `app-compose.json` must be a digest, never a tag** — a
+> tag-referenced compose keeps `composeHash` stable while the code inside changes freely, so every
+> check passes while the guarantee is gone. dStack's own reference compose gets this wrong. The
+> verifier must cross-check that the fetched compose actually references the licensed
+> `imageDigest`; that is the only enforcement point an attacker cannot route around.
 > **The license binds to `composeHash`, not the image digest** — the image digest is pinned
 > transitively inside the compose. A verifier comparing only the image digest passes deployments of
 > the right image in a *wrong environment* (different env vars, volumes, ports, an added sidecar),

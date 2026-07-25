@@ -28,6 +28,7 @@ must be updated to point at it. Silence is how decisions get relitigated by acci
 | [0004](0004-upgrade-mechanics.md) | Upgrade mechanics: burn is a developer knob; registry risk accepted | accepted |
 | [0005](0005-design-for-smart-accounts-implement-eoa.md) | Design account logic for smart accounts; implement EOA only in MVP | accepted |
 | [0006](0006-appmanifest-version-record.md) | AppManifest version record | accepted |
+| [0007](0007-compose-must-pin-digests.md) | `app-compose.json` must pin images by digest | accepted |
 
 Add a row when you add an ADR.
 
