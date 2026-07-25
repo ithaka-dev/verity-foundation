@@ -199,9 +199,17 @@ objection confused "coordinates a mechanical sequence" with "exercises judgement
 4. **Does `deployer_id` stay stable across a developer's versions?** It is a KDF input alongside
    `app_hash`. If it can change — key rotation, compromise, transfer of the app to another
    developer — then migration has a second moving part.
-5. **What is the rollback story?** ADR 0003 guarantees a holder may sit on an old version
-   indefinitely, but says nothing about *returning* to one after upgrading. With burn, returning
-   means re-purchase, and the state question arises again in reverse.
+5. ~~**What is the rollback story?**~~ **Settled 2026-07-25: rollback is `AppManifest` logic, and
+   therefore the developer's to define.** A third knob alongside upgrade pricing and burn
+   ([ADR 0004](../../docs/decisions/0004-upgrade-mechanics.md)). The protocol needs no new rule —
+   `upgradePrice(from, to)` is already directional, so a downgrade is simply a transition where
+   `to` is older, and the developer decides whether it is permitted, priced, or refused.
+
+   **One consequence that belongs in developer documentation rather than the contract: backward
+   state migration is not realistic.** v1.0 cannot read what v1.1 wrote, and no `migrate` hook runs
+   in reverse. So even where a developer permits rollback, the holder gets the old *version* with
+   *fresh* state. A developer who advertises rollback without saying this is promising something
+   the platform does not deliver.
 6. **Can dStack's key transition be invoked on an attested identity alone, or does it need the
    holder's signature?** This decides whether the holder disappears after minting or has to
    reappear mid-flow. Folded into open question 1 as the same verification exercise.

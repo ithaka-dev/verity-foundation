@@ -115,9 +115,12 @@ Three, and the third is the one that will be violated under deadline pressure.
 3. **Does anything in `app-compose.json` legitimately vary per deployment?** If any field must
    differ between two instances of the same licensed version, `compose_hash` cannot be a single
    pinned value and the design needs a canonical-form or template mechanism.
-4. **Where is the compose published** — the same IPFS manifest as `llms.txt` (§4.6), or separately?
-   Note the verifier's needs differ from discovery's: it needs integrity and availability, not
-   browsability.
+4. ~~**Where is the compose published?**~~ **Settled 2026-07-25: IPFS, CID committed on-chain in the
+   `AppManifest` record, referenced directly.** Content-addressed, so integrity is chain-anchored
+   and a wrong fetch is detectable. Referenced *from the manifest record*, not through the
+   `llms.txt` discovery document — which keeps verification independent of discovery
+   infrastructure that §4.6 deliberately leaves thin and optional. Publishing it alongside
+   `llms.txt` for convenience is fine; resolving it *through* `llms.txt` is not.
 5. **Should the verifier library ship the reference computation** so app authors and agents never
    hand-roll it? Strongly suggests yes, given rule 3.
 

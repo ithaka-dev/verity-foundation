@@ -140,8 +140,13 @@ irreducible. This is Tier 2's destination, not a replacement for Tier 1.
 
 ## Open questions
 
-1. **Where do Tier 0 keys actually live?** Hardware wallet, Safe multisig, or split custody — and
-   who holds them. This is a personal/operational choice I should not make for you.
+1. **Where do Tier 0 keys actually live?** **Deferred 2026-07-25 to the mainnet gate.**
+   [ADR 0002](../../docs/decisions/0002-defer-account-abstraction.md) makes testnet-only binding, so
+   nothing requires this today, and deciding now would fix a custody setup against circumstances
+   likely to change. **Recorded as a gate item, not a backlog item** — it must be settled *before*
+   real value, alongside AA. The only argument against deferring is lead time: hardware procurement
+   or multisig signer coordination is not same-day work, so start it when the gate comes into view
+   rather than at it.
 2. **Is the testnet `AppManifest` key really Tier 1?** It is cheap *now*, but if the testnet
    deployment is ever demoed as evidence the system works, its compromise becomes a credibility
    problem rather than a financial one.

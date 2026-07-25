@@ -68,6 +68,14 @@ Direction is onboarding-forward: build many human surfaces and make them good. S
 worked out in [RFC 2026-07-25 ui-scope](records/rfcs/2026-07-25-ui-scope.md); until that lands,
 these are the parts that constrain any UI work regardless of scope.
 
+**The design centre is the agent, not the human** (settled 2026-07-25). The human configures once
+and steps out. That does not shrink the UI work, it changes its character: a surface used once has
+no learning curve to amortise, so it must be right on first contact for someone who will never
+build fluency with it. Read "many UIs" as *many entry points to accomplish one setup task and
+leave* — invest in clarity, defaults, and irreversibility warnings, not depth of daily-use
+features. Two exceptions behave like conventional applications because a human returns to them: the
+developer publishing console, and the upgrade decision flow.
+
 **The test every surface must pass:** *if `verity-ui` disappeared tomorrow, would anything a
 developer or holder created stop working?* Yes ⇒ gatekeeper. No ⇒ tool. Spec §1 forbids the
 former anywhere in the path.
@@ -89,11 +97,18 @@ affordance and no "keep my tools current" toggle; both reintroduce what ADR 0003
 
 **Upgrade logic is `AppManifest` bookkeeping and never touches a running VM**
 ([ADR 0004](docs/decisions/0004-upgrade-mechanics.md)). The developer controls exactly two
-independent knobs: `upgradePrice(from, to)` — a discount keyed on current holdings — and whether
-the old entitlement is burned. **Burn is the default** (settled 2026-07-25); developers may opt
+independent knobs: `upgradePrice(from, to)` — a discount keyed on current holdings — whether the old
+entitlement is burned, and whether **downgrades** are permitted (rollback is `AppManifest` logic and
+therefore the developer's to define; `upgradePrice` is already directional, so a downgrade is just a
+transition where `to` is older). **Burn is the default** (settled 2026-07-25); developers may opt
 out, and the developer surface must state the consequence where the knob is set: *not* burning
 grants an additional runnable instance under §2.9's one-license-one-instance rule, so free minor
 versions without burning give away concurrency.
+
+**Backward state migration is not realistic** — v1.0 cannot read what v1.1 wrote, and no `migrate`
+hook runs in reverse. Where a developer permits rollback, the holder gets the old *version* with
+*fresh* state. This belongs in developer documentation; a developer advertising rollback without
+saying it is promising something the platform does not deliver.
 
 **Upgrade ordering is an open fork, pending one measurement.** dStack seals state under a key
 derived from the image measurement, so a new digest means a new key and old state does not follow
