@@ -30,6 +30,7 @@ must be updated to point at it. Silence is how decisions get relitigated by acci
 | [0006](0006-appmanifest-version-record.md) | AppManifest version record | accepted |
 | [0007](0007-compose-must-pin-digests.md) | `app-compose.json` must pin images by digest | accepted |
 | [0008](0008-upgrade-is-in-place.md) | Upgrade is in-place; state continuity follows `app_id` | accepted |
+| [0009](0009-verification-model.md) | Verification model: parse the raw quote, compare MR-CONFIG-ID | accepted |
 
 Add a row when you add an ADR.
 

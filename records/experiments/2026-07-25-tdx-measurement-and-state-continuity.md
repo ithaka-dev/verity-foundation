@@ -147,3 +147,40 @@ $0.10**. Both CVMs deleted at the end; `phala cvms list` confirmed.
   command — this run changed only the compose text.
 - Nodes run 0.5.7 while images up to 0.5.10 are listed; confirm which version a production
   deployment should pin, given §2.5's ≥ 0.5.6 requirement.
+
+---
+
+## Addendum, same day — MR-CONFIG-ID *is* populated
+
+**Correction to the B1 result above.** The conclusion "verification is event-log based" was drawn
+from the Cloud API's response and was wrong. The API genuinely exposes no `MR-CONFIG-ID`, but the
+**RA-TLS leaf certificate carries the raw TDX quote** (`app_certificates[0].quote`, 5010 bytes,
+quote v4, `tee_type=0x81`). Parsing it against the saved attestation JSON — no redeployment needed:
+
+```
+MRTD, RTMR0-3   match the API's values exactly (offsets validated)
+MRCONFIGID      01 64690ef38b54187da11a41a54905f5f539e948a0414ceb312c8036c82f6529fd 00…00
+MROWNER         all zero
+MROWNERCONFIG   all zero
+```
+
+- **Populated**, contrary to what the simulator's zeroed canned quote suggested.
+- **V1** (`0x01` prefix) — `0x01 ‖ SHA-256(app-compose.json) ‖ padding` — **despite `kms_enabled:
+  true`**. The V2 formula folding in `app_id` / `kp_type` / `kp_id` is not in play.
+- Payload is **byte-identical** to the independently computed `sha256(app_compose)`.
+
+**Consequence:** the expected measurement is computable from the published compose alone, with
+nothing per-deployment in it. Verification is a 48-byte comparison, not an event-log replay. Settled
+as [ADR 0009](../../docs/decisions/0009-verification-model.md). Also removes any need to pin
+`app_id` via `--custom-app-id` / `--nonce` — a follow-up from the main experiment that is now moot.
+
+**The general lesson, worth more than the specific finding:** *an API's convenience surface is not
+the boundary of what a system exposes.* The first conclusion was reasonable given what had been
+looked at, and wrong because of what had not. Two of this session's three most consequential
+findings — this one and the tag-not-digest hole — came from reading an artifact more closely rather
+than running anything new.
+
+**And a trust-model point that only emerged here:** verifying against a provider's parsed `tcb_info`
+trusts *the provider's rendering* of the hardware's statement; verifying against the raw quote
+trusts *Intel's signature* over the statement itself. Both "work." For the crown jewel of a
+trust-minimization project, the difference is the entire point.

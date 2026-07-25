@@ -4,7 +4,7 @@
 
 **Status:** concept → MVP. This document is the source of truth for design decisions already made. When implementing, do not silently reopen settled decisions — flag disagreements explicitly.
 
-**Revised 2026-07-25** to reconcile with decisions recorded in [`decisions/`](decisions/) (ADR 0001–0008) and measurements in [`../records/experiments/`](../records/experiments/). Where an ADR and this document disagree, **the ADR is newer and wins** — and that disagreement is a bug in this document, to be fixed rather than tolerated. Sections amended in that revision are marked ⟳.
+**Revised 2026-07-25** (ADR 0001–0009) to reconcile with decisions recorded in [`decisions/`](decisions/) and measurements in [`../records/experiments/`](../records/experiments/). Where an ADR and this document disagree, **the ADR is newer and wins** — and that disagreement is a bug in this document, to be fixed rather than tolerated. Sections amended in that revision are marked ⟳.
 
 ---
 
@@ -237,22 +237,31 @@ This must be a reusable module any agent can embed. If this step is skipped, the
 
 **It must specify *what* is compared, not merely that it compares.** An implementer who checks only the image digest will believe they are done, and will have built a partial version of the skip this section warns about.
 
-Against dstack 0.5.7, the Phala Cloud attestation API exposes `mrtd`, `rtmr0-3`, the RTMR3 event log and the full `app_compose` — **but no `MR-CONFIG-ID`.** So verification is event-log based:
+**The verifier parses the raw TDX quote and compares `MR-CONFIG-ID`** (ADR 0009). Measured on dstack 0.5.7: the quote is carried in the **RA-TLS leaf certificate**, `MR-CONFIG-ID` is populated, and it is **V1** — `0x01 ‖ SHA-256(app-compose.json) ‖ padding` — *despite* KMS being enabled. Its payload was confirmed byte-identical to an independently computed `sha256(app_compose)`.
 
-1. replay the event log and confirm it reconstructs the reported `rtmr3`
-2. check `compose-hash` equals `sha256` of the fetched `app-compose.json`, **and** that this equals the licensed `composeHash` — confirmed reproducible in practice
-3. check the compose references the licensed `imageDigest` (§2.2) — the only enforcement point for digest-pinning that an attacker cannot route around
-4. check `os-image-hash` against the published dstack image list; check `key-provider` and `storage-fs`
-5. **read** `app-id` and `instance-id`; do not attempt to predict them
-6. MRTD and RTMR0–2 may be compared against references
+So the expected measurement is computable from the published compose **alone**, with nothing per-deployment entering it:
 
-**Two rules that will be violated under deadline pressure:**
-- **Do not compare RTMR3 as a whole.** `mr-kms` varies per boot, so a reference cannot be pre-computed and intermittent false mismatches are guaranteed.
-- **Never loosen a check to resolve a mismatch.** The previous rule guarantees someone sees spurious failures; relaxing the comparison until they pass converts the crown jewel into decoration while everything continues to appear to work. The correct response is to narrow *what* is compared to legitimately stable values — never to weaken *how strictly*.
+```
+expected_mrconfigid = 0x01 ‖ licensed_composeHash ‖ 0x00 × 15
+```
+
+1. fetch the published `app-compose.json` via `composeURI`
+2. check `sha256(compose)` equals the licensed `composeHash`
+3. check the compose pins the licensed `imageDigest` and contains **no tag references** (§2.2, I8) — the only digest-pinning enforcement an attacker cannot route around
+4. verify the quote's signature chain (DCAP / `dcap-qvl`) up to Intel
+5. compute `expected_mrconfigid` and compare
+6. compare `MRTD` and `RTMR0–2` against references for the expected dstack OS image
+
+**Never treat the cloud provider's parsed `tcb_info` as the source of truth.** Verifying against a provider's API means trusting *that provider's rendering* of the hardware's statement; verifying against the raw quote means trusting *Intel's signature* over the statement itself. A verifier built on the former would appear to work identically while resting on a much larger trust base — which is the opposite of this project's premise.
+
+The RTMR3 event log stays in a supporting role: diagnosing *which* aspect differs when a check fails, and *reading* `app-id` / `instance-id`, which are per-deployment and cannot be predicted. Never the primary check.
+
+**Three rules that will be violated under deadline pressure:**
+- **Do not compare RTMR3 as a whole.** `mr-kms` varies per boot, so no reference can be pre-computed and intermittent false mismatches are guaranteed.
+- **Branch on the `MR-CONFIG-ID` prefix byte; never assume `0x01`.** V1 vs V2 is a format that may change between dstack releases, and a hard-coded prefix fails silently on V2.
+- **Never loosen a check to resolve a mismatch.** The first rule guarantees someone sees spurious failures; relaxing the comparison until they pass converts the crown jewel into decoration while everything continues to appear to work. The correct response is to narrow *what* is compared to legitimately stable values — never to weaken *how strictly*.
 
 **The library ships the reference computation.** That is its primary job, more than the comparison: if every agent computes expectations itself, each is subtly wrong in its own way, and the wrongness surfaces as exactly the spurious mismatches that invite loosening.
-
-*Open:* whether `MR-CONFIG-ID` is populated in the raw quote on 0.5.7 and merely unexposed, or arrives in a later version. It would replace steps 1–4 with a single 48-byte comparison.
 
 ### 4.6 Discovery (MVP-thin)
 - static `llms.txt` / JSON manifest on IPFS or Fileverse describing: app name, manifest contract address, purchase endpoint, price
@@ -381,7 +390,7 @@ Milestone = the closed loop: agent discovers → pays → license minted → con
 
 Design is settled; these are the open items, and most are measurements rather than decisions.
 
-**Blocking the verifier:** whether `MR-CONFIG-ID` is populated in the raw quote on 0.5.7 and merely unexposed by the Cloud API, or arrives in a later dstack version. It decides between §4.5's event-log replay and a single 48-byte comparison.
+~~**Blocking the verifier.**~~ **Closed** (ADR 0009): `MR-CONFIG-ID` is populated and is V1, carried in the RA-TLS leaf certificate. The verifier compares 48 bytes computed from the published compose. Nothing blocks the verifier now.
 
 **Verify before the component that depends on it:**
 - Does `app_id` preservation hold across dstack versions? (Silent data loss if not.)

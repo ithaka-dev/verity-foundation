@@ -11,8 +11,14 @@ invariants — do not silently reopen either. Flag disagreement explicitly inste
 
 > **Before touching the verifier or `AppManifest`, read
 > [ADR 0006](docs/decisions/0006-appmanifest-version-record.md),
-> [ADR 0007](docs/decisions/0007-compose-must-pin-digests.md), and
+> [ADR 0007](docs/decisions/0007-compose-must-pin-digests.md),
+> [ADR 0009](docs/decisions/0009-verification-model.md), and
 > [RFC license-attestation-binding](records/rfcs/2026-07-25-license-attestation-binding.md).**
+> **The verifier parses the raw TDX quote from the RA-TLS leaf certificate** and compares
+> `MR-CONFIG-ID` against `0x01 ‖ licensed_composeHash ‖ 0x00×15` (V1 on dstack 0.5.7 — *branch on
+> the prefix byte, never assume it*). **Never treat a cloud provider's parsed `tcb_info` as the
+> source of truth:** that trusts the provider's rendering of the hardware's statement, where the
+> raw quote trusts Intel's signature over the statement itself.
 > **Every image reference in a published `app-compose.json` must be a digest, never a tag** — a
 > tag-referenced compose keeps `composeHash` stable while the code inside changes freely, so every
 > check passes while the guarantee is gone. dStack's own reference compose gets this wrong. The
