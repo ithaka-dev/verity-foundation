@@ -64,9 +64,19 @@ what is produced exists independently of whoever hosted the form. "Catalog" impl
 listed to be found — say *index*; §4.6 forbids a required catalog, not an optional observer.
 
 **Two surfaces are load-bearing and absent from spec §5:** the spend envelope (§2.7 — the only
-human-in-the-loop moment in the system, and **non-custodial is non-negotiable**, since §2.7's
-argument dies if the operator can edit the boundary) and upgrade opt-in (§2.3). Raise both when
-the spec is next reviewed.
+human-in-the-loop moment in the system) and upgrade opt-in (§2.3). Raise both when the spec is
+next reviewed.
+
+**Custody is settled: nothing custodial or semi-custodial.** Account abstraction is the ceiling —
+no embedded wallets, no social-recovery services, no semi-custodial accounts. §2.7's argument is
+that the spend boundary is only real at a layer the agent cannot edit; an operator-held key moves
+that layer rather than removing it, which is the same defect wearing a different hat. Onboarding
+quality is achieved *within* this constraint, not traded against it.
+
+This has consequences for payments that are not obvious: x402's recommended EIP-3009 method is
+ECDSA/EOA-only and **cannot** be used by an ERC-4337 account, so §4.2 and §4.1 do not compose via
+the default path. See [RFC non-custodial-payments](records/rfcs/2026-07-25-non-custodial-payments.md)
+before implementing anything in `verity-payments`.
 
 **Rules for agents:**
 - Never create a sibling repo without being asked. Propose it and record the decision in `docs/decisions/`.
