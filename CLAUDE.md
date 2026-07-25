@@ -73,10 +73,20 @@ that the spend boundary is only real at a layer the agent cannot edit; an operat
 that layer rather than removing it, which is the same defect wearing a different hat. Onboarding
 quality is achieved *within* this constraint, not traded against it.
 
-This has consequences for payments that are not obvious: x402's recommended EIP-3009 method is
-ECDSA/EOA-only and **cannot** be used by an ERC-4337 account, so §4.2 and §4.1 do not compose via
-the default path. See [RFC non-custodial-payments](records/rfcs/2026-07-25-non-custodial-payments.md)
-before implementing anything in `verity-payments`.
+**Account abstraction itself is deferred out of MVP** by
+[ADR 0002](docs/decisions/0002-defer-account-abstraction.md), under three binding conditions:
+
+1. **Testnet only** while it stands — no real value, at any point.
+2. **AA is a hard gate on any real-value deployment**, not a roadmap item.
+3. The interim EIP-3009 payment path is **designated throwaway** — it does not compose with the
+   ERC-7710 path AA will require ([RFC non-custodial-payments](records/rfcs/2026-07-25-non-custodial-payments.md)).
+
+Consequently **there is no spend envelope in MVP, and there must be no pretense of one.** Do not
+add an agent-side budget check or a spend instruction in a prompt as a stopgap — I2 and §2.7
+forbid exactly this, because such a check is editable by the party it constrains and manufactures
+confidence no boundary justifies. No limits is the correct interim posture; a fake limit is worse
+than none. If a bound is needed before AA lands, it belongs somewhere the agent cannot reach, such
+as the funded balance of the testnet key.
 
 **Rules for agents:**
 - Never create a sibling repo without being asked. Propose it and record the decision in `docs/decisions/`.

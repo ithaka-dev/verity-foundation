@@ -23,6 +23,7 @@ must be updated to point at it. Silence is how decisions get relitigated by acci
 | # | Title | Status |
 |---|---|---|
 | [0001](0001-control-center-stack.md) | Control center stack | accepted |
+| [0002](0002-defer-account-abstraction.md) | Defer account abstraction out of MVP | accepted |
 
 Add a row when you add an ADR.
 

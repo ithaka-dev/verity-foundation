@@ -1,9 +1,18 @@
 # RFC: Non-custodial payments path
 
-**Status:** draft
+**Status:** draft — **scoped to v2 by [ADR 0002](../../docs/decisions/0002-defer-account-abstraction.md)**
 **Date:** 2026-07-25
 **Author:** Claude (agent), for review by Peter
 **Relates to:** spec §2.7, §4.1, §4.2, §6; invariants I2, I4; [RFC ui-scope](2026-07-25-ui-scope.md)
+
+> **Read this first.** ADR 0002 defers account abstraction out of MVP. MVP payments therefore use
+> an EOA over the standard EIP-3009 method — deliberately walking into the trap this RFC
+> identifies, as designated throwaway scaffolding, under three binding conditions (testnet only;
+> AA is a hard gate on real value; the interim path is disposable).
+>
+> Everything below remains the plan for when AA lands, and open question 1 is still worth settling
+> early: if no facilitator supports ERC-7710, the eventual migration is harder than this RFC
+> assumes, and that is better discovered now than at the mainnet gate.
 
 ## Problem
 
