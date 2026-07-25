@@ -116,22 +116,22 @@ hook runs in reverse. Where a developer permits rollback, the holder gets the ol
 *fresh* state. This belongs in developer documentation; a developer advertising rollback without
 saying it is promising something the platform does not deliver.
 
-**Upgrade ordering is an open fork, pending one measurement.** dStack seals state under a key
-derived from the image measurement, so a new digest means a new key and old state does not follow
-by default. Whether burn may be atomic with mint depends entirely on this:
+**Upgrade is IN PLACE. The orchestrator upgrades the existing CVM; it never deploys a fresh one for
+an upgrade** ([ADR 0008](docs/decisions/0008-upgrade-is-in-place.md), measured on real TDX).
+State continuity follows **`app_id`**, not `compose_hash`: dStack's upgrade path preserves `app_id`,
+`instance_id` and the encrypted volume, while a *fresh deploy* gets a new `app_id` and therefore no
+access to prior state.
 
-> **Can a new instance read the old volume directly, granted the previous epoch's key — or does
-> migration require the old instance to be live?**
+> **This fails silently and in the worst direction.** A fresh deploy produces a *working* instance
+> with *empty* state and *no error* — nothing in the attestation is wrong. The holder loses
+> everything and finds out later.
 
-- **Directly** → `AppManifest` burns and mints in one transaction; migration follows and is
-  retryable, since nothing depends on holding the old license. Simpler, and drops the
-  completion-attestation machinery entirely.
-- **Old instance needed** → burning first makes migration structurally impossible, and the ordering
-  must be mint → deploy → migrate → verify → burn.
+Consequences: `AppManifest` may **burn and mint atomically**; there is **no two-instance window**
+(so §2.9 needs no exemption); and the `migrate` hook exists to *transform* data, not to move it —
+the volume carries over by itself, so most apps need nothing. Do **not** build
+completion-attestation signing, an app-side signing key, or permissionless burn submission.
 
-Do not write `AppManifest`'s upgrade interface until this is settled on the simulator. See
-[RFC upgrade-state-continuity](records/rfcs/2026-07-25-upgrade-state-continuity.md) open question 2,
-which gates [ADR 0006](docs/decisions/0006-appmanifest-version-record.md) item 4.
+Measured on dstack 0.5.7. **Re-verify on any version bump** — the failure mode is silent data loss.
 
 **No automigration, in any form.** Minting is *not* consent to migrate — those are two distinct
 holder acts ("I want this version" vs. "move this instance's data and retire the old one"), and a
