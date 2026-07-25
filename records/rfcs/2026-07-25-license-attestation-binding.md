@@ -121,8 +121,12 @@ Three, and the third is the one that will be violated under deadline pressure.
    `llms.txt` discovery document — which keeps verification independent of discovery
    infrastructure that §4.6 deliberately leaves thin and optional. Publishing it alongside
    `llms.txt` for convenience is fine; resolving it *through* `llms.txt` is not.
-5. **Should the verifier library ship the reference computation** so app authors and agents never
-   hand-roll it? Strongly suggests yes, given rule 3.
+5. ~~**Should the verifier library ship the reference computation?**~~ **Settled 2026-07-25: yes,
+   and it is the library's primary job.** If every agent computes the expected `MR-CONFIG-ID`
+   itself, each gets it subtly wrong in its own way — and rule 3 means the wrongness surfaces as
+   spurious mismatches that invite loosening. One tested implementation, consumed rather than
+   copied. §4.5 already calls this module the crown jewel; the reference computation is the part
+   that earns the name, more than the comparison itself.
 
 ## Outcome
 

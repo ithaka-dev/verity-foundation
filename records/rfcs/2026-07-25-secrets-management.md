@@ -150,8 +150,11 @@ irreducible. This is Tier 2's destination, not a replacement for Tier 1.
 2. **Is the testnet `AppManifest` key really Tier 1?** It is cheap *now*, but if the testnet
    deployment is ever demoed as evidence the system works, its compromise becomes a credibility
    problem rather than a financial one.
-3. **Age key bootstrap.** Derive host keys from SSH host keys (convenient, couples the two) or
-   manage separate age identities (cleaner, one more thing to hold)?
+3. ~~**Age key bootstrap.**~~ **Settled 2026-07-25: derive host age keys from SSH host keys.**
+   Standard `sops-nix` practice, and the SSH host key already exists at first boot, so there is no
+   chicken-and-egg problem and nothing extra to hold. Accepted coupling: rotating a host's SSH key
+   means re-encrypting its secrets. For a two-host project that is a minor, infrequent cost;
+   revisit if host count grows enough that the two lifecycles want to be independent.
 4. ~~**Do agents get secrets at all?**~~ **Settled 2026-07-25: no Tier 1 access for agents.**
    An agent holding an infrastructure credential is a prompt-injection path into infrastructure —
    the same threat class as §8's top residual risk, pointed at credentials instead of spend, and
@@ -160,8 +163,12 @@ irreducible. This is Tier 2's destination, not a replacement for Tier 1.
    revoked after. If this becomes genuinely limiting, the answer is scoped, short-lived, revocable
    per-task credentials with their own envelope — never a shared key, and never "temporarily" for
    convenience.
-5. **Rotation cadence**, and who is responsible for it. An unrotated key is the default state of
-   every secrets system nobody assigned an owner.
+5. ~~**Rotation cadence and ownership.**~~ **Settled 2026-07-25: owner is the repo owner until
+   there is a team; rotate annually and on event.** Events are personnel change, suspected
+   exposure, device loss, and any secret that appeared in telemetry or a log. Every rotation gets an
+   entry in [`../changes/`](../changes/) — an unrecorded rotation is indistinguishable from one that
+   never happened. Naming an owner is the substantive half of this: an unrotated key is the default
+   state of every secrets system nobody assigned one to.
 
 ## Outcome
 

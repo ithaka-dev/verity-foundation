@@ -251,11 +251,18 @@ one. Tiering already delivers most of the low-friction benefit.
    The template must demonstrate idempotent migration, not merely mention the requirement.
 4. **Does the holder ever see `needs_holder_action` directly,** or does it surface through the UI
    ([RFC ui-scope](2026-07-25-ui-scope.md))? A new human surface, if so.
-5. **Which repo?** Proposed: a new `verity-app-template` sibling. Alternatively the MVP tool
-   (`verity-tool-<name>`) doubles as the reference — cheaper, but conflates "an app" with "the
-   example," and examples that are also production code drift toward being neither.
-6. **Timeouts.** A migration that hangs is indistinguishable from one that is slow. Who decides
-   when to give up, and what happens to the two-instance window meanwhile?
+5. ~~**Which repo?**~~ **Settled 2026-07-25: `verity-app-template`, its own repo.** Not folded into
+   `verity-tool-<name>`. Examples that are also production code drift toward being neither — the
+   example accretes real-world complexity that obscures the teaching, and the product gets
+   simplified for clarity it does not need. It also makes ADR 0005's higher review bar enforceable:
+   a repo whose only job is to be exemplary can be held to that standard without arguing about
+   shipping pressure.
+6. ~~**Timeouts.**~~ **Settled 2026-07-25: orchestrator-side, fixed and documented; expiry destroys
+   nothing.** A migration that hangs is indistinguishable from one that is slow, so the orchestrator
+   gives up on a published timeout rather than waiting indefinitely. On expiry: **no burn**, both
+   entitlements retained, holder notified, retry permitted — which is safe precisely because apps
+   are required to be idempotent (Q3). The two-instance window persists across retries; that is the
+   benign failure state the ordering was designed to land in, not an anomaly to clean up.
 7. **Does the CVM get RPC access, and can it trust what it hears?** Mandatory holder resolution
    means level-2 apps need chain reads from inside the enclave. That introduces an availability
    dependency, leaks which licenses are being checked to whoever serves the RPC, and — the part
