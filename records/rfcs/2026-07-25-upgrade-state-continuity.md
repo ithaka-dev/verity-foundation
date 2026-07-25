@@ -77,6 +77,44 @@ window is a feature of the ordering, not an exception to be special-cased.
 slate. That should be a holder decision made in front of them, not the default that happens when
 nobody implements step 3.
 
+### Revision, 2026-07-25 — the orchestrator coordinates steps 2–4
+
+An earlier draft of this RFC listed orchestrator-managed migration under Alternatives and held it
+back on §2.8 discretion grounds. That objection was too broad and is withdrawn.
+
+**The orchestrator cannot see the data, by construction.** State is sealed under a KMS-derived key
+obtainable only by an attested CVM, and the orchestrator sits outside the enclave. It therefore
+never *performs* a migration — it sequences one:
+
+```
+deploy new CVM  →  attach the old encrypted volume  →  KMS authorizes the new app_hash
+against the prior epoch  →  confirm readiness  →  tear down the old instance
+```
+
+The decrypt/re-encrypt happens inside the enclave, under keys the orchestrator never holds. I7 is
+preserved because it cannot be violated here. §2.8 is preserved because every input remains
+chain-derived: license → version → digest.
+
+This holds up in the decentralized v2 as well, and arguably improves there: a permissionless worker
+coordinating a migration still sees no plaintext, and dStack KMS refuses keys to any worker not
+running the authorized digest.
+
+So the holder's flow is: mint the new license, present it to the orchestrator's redeem endpoint
+(§4.3 already describes exactly such an endpoint), and the orchestrator handles the rest. No
+further user input is needed *for the migration itself*.
+
+**What still cannot be delegated to the orchestrator:**
+
+- **App-level data transformation.** If the new version restructures what the old one wrote, only
+  the app can do that. The orchestrator can hand a new image an old volume; it cannot reshape the
+  contents. This is an app-author responsibility and belongs in developer documentation, because
+  the default assumption will be that the platform handles it.
+- **Failure policy** — what happens when step 3 or 4 fails. This *is* orchestrator policy, but a
+  fixed, documented, deterministic policy is not the discretion §2.8 forbids. §2.8 forbids
+  authority that cannot be derived from chain state, not the existence of defined behavior. Write
+  the policy down; do not decide case by case.
+- **Possibly the KMS authorization** — see open question 6.
+
 ## Why now
 
 The ordering is nearly free to get right at contract-design time and expensive afterwards. If
@@ -110,9 +148,10 @@ exactly the stateful ones.
 keeping the door open. Rejected: it reverses ADR 0004's settled default and permanently inflates
 instance count to buy a guarantee that correct ordering already provides.
 
-**Make migration the orchestrator's job, automatically.** Attractive, and it may be right later.
-Held back for now because §2.8 requires the orchestrator to stay free of discretion, and "decide
-how to move an app's data" is discretion of a fairly rich kind. Wants its own analysis.
+**~~Make migration the orchestrator's job.~~** ~~Held back on §2.8 discretion grounds.~~
+**Withdrawn 2026-07-25 — this is now the proposal.** See the revision note above: the orchestrator
+sequences the migration but cannot perform it, because it cannot read enclave state. The discretion
+objection confused "coordinates a mechanical sequence" with "exercises judgement."
 
 ## Open questions
 
@@ -131,6 +170,19 @@ how to move an app's data" is discretion of a fairly rich kind. Wants its own an
 5. **What is the rollback story?** ADR 0003 guarantees a holder may sit on an old version
    indefinitely, but says nothing about *returning* to one after upgrading. With burn, returning
    means re-purchase, and the state question arises again in reverse.
+6. **Can dStack's key transition be invoked on an attested identity alone, or does it need the
+   holder's signature?** This decides whether the holder disappears after minting or has to
+   reappear mid-flow. Folded into open question 1 as the same verification exercise.
+7. **Who triggers the burn?** The ordering requires burn to come after verified migration, so it
+   cannot be atomic with mint. Three options:
+   - **Holder sends a second transaction** after verification. Safe, holder-controlled, and costs
+     one extra user action. **Recommended for MVP** — the friction buys irreversibility protection.
+   - **Orchestrator is authorized to burn** on successful migration. One user action, but it hands
+     the orchestrator destructive authority over property. §2.9 already accepts trusted
+     orchestrator enforcement for concurrency, but refusing to deploy and destroying an entitlement
+     are different magnitudes. Revisit once the orchestrator is attested (§2.8).
+   - **Time-based lock/expiry** of the old entitlement. No verification signal at all; rejected as
+     the weakest of the three.
 
 ## Outcome
 
