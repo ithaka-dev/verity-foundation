@@ -75,7 +75,7 @@ Developers publish from their own Docker-compatible registries. They sell the se
 ### 2.6 Ownership model: durable long-running instances, state as the primitive ⟳
 The durable thing is the **state lineage + genome**, not the running process. Instances can go cold and reconstitute via dStack KMS-derived deterministic keys + encrypted persistent storage. Fire-and-forget is the degenerate case (spawn, act, discard snapshot) of the general case (spawn, act, keep it). Build the general case.
 
-**State continuity follows `app_id`, not the configuration hash** — measured on real TDX, dstack 0.5.7 (ADR 0008). dStack's upgrade path is **in place**: it preserves `app_id`, `instance_id` and the encrypted volume, so state carries across a version change with no migration call. A *fresh deploy* receives a new `app_id` and therefore no access to prior state.
+**State continuity follows `app_id`, not the configuration hash** — measured on real TDX, dstack 0.5.7 (ADR 0008), for both the encrypted disk *and* keys an app derives itself via the guest agent's `DeriveKey`. A derived key was byte-identical across an in-place update that changed `compose_hash`, and the app decrypted data it had sealed before the change. dStack's upgrade path is **in place**: it preserves `app_id`, `instance_id` and the encrypted volume, so state carries across a version change with no migration call. A *fresh deploy* receives a new `app_id` and therefore no access to prior state.
 
 **This makes `app_id` the identity a license must bind its instance to**, since it is what governs state access. It also means an upgrade performed as a fresh deployment silently destroys the holder's state while producing a working instance and a valid attestation — see §4.3.
 
@@ -399,21 +399,30 @@ Design is settled; these are the open items, and most are measurements rather th
 - Do deployed x402 facilitators implement ERC-7710? (Gates the AA payment path.)
 - Can ERC-7710 caveats express all five envelope dimensions of §2.7?
 
-> ### ⚠ The largest open problem: platform upgrades may strand state
+> ### ⚠ Open: the dstack OS image cannot be changed in place
 >
-> **The OS image cannot be changed on an existing CVM** — `phala deploy --cvm-id … --image` fails
-> client-side validation and `phala cvms upgrade` accepts no image parameter. The in-place path
-> changes the *compose*, not the platform beneath it. A licensed instance therefore appears pinned
-> for life to the dstack version it was created on.
+> **Three layers upgrade differently, and conflating them overstates the problem** (measured):
 >
-> That puts **§2.5** ("keep dstack current; treat attestation as revocable") directly against
-> **§2.6** (instances are durable, owned possessions). If patching dstack requires a new CVM it
-> requires a new `app_id`, which by ADR 0008 means no access to prior state. The holder chooses
-> between a known-vulnerable platform and losing their data.
+> | Layer | In-place upgradeable? |
+> |---|---|
+> | dstack **OS image** | **No** — `phala deploy --cvm-id … --image` fails validation; `cvms upgrade` takes no image |
+> | dstack **SDK** (library inside the container) | **Yes** — an ordinary compose change |
+> | **App code** | **Yes** |
 >
-> **Established for the CLI, not the platform** — the failure is a CLI-side schema check, so it may
-> be a CLI defect. Confirm against the Cloud API directly before treating it as a design
-> constraint. ([Experiment](../records/experiments/2026-07-25-cross-version-upgrade.md).)
+> So only a *guest OS / guest agent* defect requires the immovable layer to move. SDK and app
+> defects are ordinary updates, and a KMS or verifier defect is fixed outside the CVM entirely.
+>
+> The residual tension is real but narrow: for a guest-OS vulnerability, §2.5 ("keep dstack
+> current") meets §2.6 ("durable possession"). A new CVM means a new `app_id`, which by ADR 0008
+> means no access to prior state.
+>
+> **Established for the CLI, not the platform** — the failure is a CLI-side schema check and may be
+> a CLI defect. Confirm against the Cloud API before treating it as a design constraint.
+> ([Experiment](../records/experiments/2026-07-25-cross-version-upgrade.md).)
+>
+> If it proves real, the most promising fix is app-level: an **`export`** capability in the
+> lifecycle contract. The app is inside the enclave and can read its own data, so it can hand the
+> holder an encrypted export that a fresh CVM imports.
 
 **Open design questions:** ~~all previously listed are now settled~~ — CVM RPC access (pinned in the measured compose), holder-view indexer (optional, non-authoritative, replaceable), static IPFS UI bundle (yes, a constraint not an aspiration), `needs_holder_action` surfacing (orchestrator → UI, plus telemetry), testnet key tier (Tier 1, never promoted to mainnet). See the RFCs in [`../records/rfcs/`](../records/rfcs/).
 
