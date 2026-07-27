@@ -289,42 +289,48 @@ Mark items complete here as they land — this document is the progress tracker.
 - [x] CLAUDE.md §0 sibling table updated to `active`
 - [x] **D-03 ADR: verifier update discipline** → [ADR 0014](docs/decisions/0014-verifier-update-discipline.md). **V-10's verdict type is richer than planned — do not freeze it before reading this**
 - [x] D-04 ADR: adopt sops-nix → [ADR 0015](docs/decisions/0015-adopt-sops-nix.md). Unblocks F-02 and the rest of `deployments/`
-- [ ] Create 5 GitHub repos (`gh` not installed — see below)
-- [ ] Seed each repo: README, `CLAUDE.md` pointing at this spec/ADRs, scaffold, CI
-- [ ] File 89 issues into their repos
+- [x] Create 5 GitHub repos — all public, `verity-app-template` flagged `is_template`
+- [x] Seed each repo: README with do-not-adopt banner + `CLAUDE.md` pointing at this spec/ADRs
+- [x] File issues — **76 of 89 filed**; 13 deferred with their repos (T-14 tool, U-01…U-08 UI)
 
-### Phase 1a — verifier (15)
-- [ ] V-01…V-15 — see table above. V-13 (negative suite) and V-10 (public API) are the load-bearing ones
+### Phase 1a — verifier (15) — **filed**
+- [x] [ithaka-dev/verity-verifier#1–15](https://github.com/ithaka-dev/verity-verifier/issues) · 5 tagged `invariant`
+- [ ] Start with V-01, V-02 (fixtures are real quotes in `records/experiments/artifacts/`)
+- [ ] **V-10 must not be frozen before reading [ADR 0014](docs/decisions/0014-verifier-update-discipline.md)** — the verdict type is richer than a boolean
 
-### Phase 1b — contracts (13)
-- [ ] **C-02 first** — the signature dispatch helper, before anything that verifies a signature
-- [ ] C-01, C-03…C-13
+### Phase 1b — contracts (13) — **filed**
+- [x] [ithaka-dev/verity-contracts#1–13](https://github.com/ithaka-dev/verity-contracts/issues)
+- [ ] **C-02 is issue #1 and goes first** — build the signature dispatch helper before anything verifies a signature
 
-### Phase 2 — template + tool (14)
-- [ ] T-01…T-14 — highest review bar in the project (ADR 0005)
+### Phase 2 — template (13) — **filed** · tool (1) deferred
+- [x] [ithaka-dev/verity-app-template#1–13](https://github.com/ithaka-dev/verity-app-template/issues) · all tagged `unpatchable`
+- [ ] T-14 (the MVP tool) waits on `verity-tool-<name>`, deferred by [ADR 0013](docs/decisions/0013-create-sibling-repos.md) until its name is chosen
 
-### Phase 3a — payments (7) · 3b — orchestrator (12)
-- [ ] P-01…P-07 (disposability in the README title)
-- [ ] O-01…O-12 (O-06 and O-11 exist because I9 fails silently)
+### Phase 3a — payments (7) · 3b — orchestrator (12) — **filed**
+- [x] [ithaka-dev/verity-payments#1–7](https://github.com/ithaka-dev/verity-payments/issues) · all tagged `throwaway`
+- [x] [ithaka-dev/verity-orchestrator#1–12](https://github.com/ithaka-dev/verity-orchestrator/issues) · O-06 and O-11 tagged `silent-failure`
 
-### Phase 4 — closed loop (5)
-- [ ] L-01…L-05 — L-02 and L-03 test *different mechanisms*; both required
+### Phase 4 — closed loop (5) · Phase 5 — infra (11) — **filed here**
+- [x] [ithaka-dev/verity-foundation#1–16](https://github.com/ithaka-dev/verity-foundation/issues)
 
-### Phase 5 — infra (11) · Phase 6 — UI (8)
-- [ ] F-01…F-11 (parallel throughout)
-- [ ] U-01…U-08 (after the loop closes)
+### Phase 6 — UI (8) — deferred
+- [ ] Waits on `verity-ui`, deferred by [ADR 0013](docs/decisions/0013-create-sibling-repos.md) while [RFC ui-scope](records/rfcs/2026-07-25-ui-scope.md) has open questions
 
 ### Archive
 - [ ] Move `research.md` + `plan.md` to `records/plans/` when the work concludes, per CLAUDE.md
 
 ---
 
-## Blocked on you
+## Status
 
-**`gh` is not installed**, so I cannot create the five repositories. Options: install it
-(`brew install gh` + `gh auth login`), create them in the GitHub web UI, or authorize me to use the
-GitHub API directly with a token. Everything downstream of repo creation waits on this.
+**Phase 0 complete.** Five repos created, seeded, and public. 76 issues filed; the remaining 13
+wait on repos deliberately deferred by [ADR 0013](docs/decisions/0013-create-sibling-repos.md).
 
-**D-03 should land before V-10.** The verifier's public interface freezes the moment the first agent
-embeds it, and today's research showed the verifier is the component most likely to need security
-updates. Cheap now; expensive after adoption.
+**Phases 1a and 1b can start in parallel.** Neither blocks the other.
+
+Two things to carry into implementation:
+
+- **`verity-contracts` C-02 first.** The signature dispatch helper before anything that verifies a
+  signature. Build it later and something has already reintroduced a raw `ecrecover`.
+- **`verity-verifier` V-10 after ADR 0014.** It is the surface every agent embeds, and it freezes on
+  first adoption.
