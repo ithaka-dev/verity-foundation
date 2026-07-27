@@ -35,6 +35,8 @@ must be updated to point at it. Silence is how decisions get relitigated by acci
 | [0011](0011-app-identity-is-manifest-address.md) | App identity is the `AppManifest` address | accepted |
 | [0012](0012-language-allocation.md) | Language allocation across components | accepted |
 | [0013](0013-create-sibling-repos.md) | Create the sibling repositories now | accepted |
+| [0014](0014-verifier-update-discipline.md) | Verifier update discipline | accepted |
+| [0015](0015-adopt-sops-nix.md) | Adopt sops-nix for operator secrets | accepted |
 
 Add a row when you add an ADR.
 

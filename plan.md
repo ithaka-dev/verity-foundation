@@ -85,9 +85,9 @@ Fully specified by ADR 0009. Build it against committed artifacts.
 | V-07 | `MR-CONFIG-ID` reference computation, **branching on the prefix byte** — never assume `0x01` | ADR 0009 | S |
 | V-08 | DCAP signature-chain verification via `dcap-qvl` | ADR 0009 step 4 | M |
 | V-09 | MRTD / RTMR0–2 comparison against known dstack OS image references | ADR 0009 step 6 | M |
-| V-10 | **Refuse-on-mismatch public API** — the surface agents embed. Freeze deliberately | I1; D-03 | M |
+| V-10 | **Public API returning a verdict with provenance** — version, reference-data date, and *which checks ran*. Never a bare boolean. The surface agents embed | I1; **[ADR 0014](docs/decisions/0014-verifier-update-discipline.md)** | M |
 | V-11 | **Structured failure reporting** — *which* check failed, not a boolean | `observability/README.md` | S |
-| V-12 | Version floor / staleness signalling | D-03 | M |
+| V-12 | Mandatory TCB enforcement (not configurable); refuse on revoked, warn on stale; bundled reference data with optional signed feed | **[ADR 0014](docs/decisions/0014-verifier-update-discipline.md)** | M |
 | V-13 | **Negative test suite**: tag-referenced compose, mutated compose, wrong `imageDigest`, RTMR3 drift across boots, truncated quote | I1, I8 | L |
 | V-14 | WASM + Node bindings | D-02 | M |
 | V-15 | Docs: the three rules, prominently — no RTMR3, branch on prefix, **never loosen a check** | ADR 0009 | S |
@@ -287,8 +287,8 @@ Mark items complete here as they land — this document is the progress tracker.
 - [x] D-02 ADR: language allocation → [ADR 0012](docs/decisions/0012-language-allocation.md)
 - [x] Decision: create sibling repos → [ADR 0013](docs/decisions/0013-create-sibling-repos.md)
 - [x] CLAUDE.md §0 sibling table updated to `active`
-- [ ] **D-03 ADR: verifier update discipline** — gates V-10, the public interface
-- [ ] D-04 ADR: adopt sops-nix
+- [x] **D-03 ADR: verifier update discipline** → [ADR 0014](docs/decisions/0014-verifier-update-discipline.md). **V-10's verdict type is richer than planned — do not freeze it before reading this**
+- [x] D-04 ADR: adopt sops-nix → [ADR 0015](docs/decisions/0015-adopt-sops-nix.md). Unblocks F-02 and the rest of `deployments/`
 - [ ] Create 5 GitHub repos (`gh` not installed — see below)
 - [ ] Seed each repo: README, `CLAUDE.md` pointing at this spec/ADRs, scaffold, CI
 - [ ] File 89 issues into their repos
