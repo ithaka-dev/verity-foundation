@@ -1,0 +1,24 @@
+services:
+  probe:
+    image: alpine@sha256:d9e853e87e55526f6b2917df91a2115c36dd7c696a35be12163d44e6e2a4b6bc
+    restart: always
+    volumes:
+      - state:/state
+    command:
+      - sh
+      - -c
+      - |
+        VER=v1
+        if [ ! -f /state/marker.txt ]; then
+          echo "written-by-${VER}" > /state/marker.txt
+        fi
+        while true; do
+          if [ -f /state/marker.txt ]; then
+            echo "PROBE ver=${VER} MARKER=$(cat /state/marker.txt)"
+          else
+            echo "PROBE ver=${VER} MARKER=MISSING"
+          fi
+          sleep 20
+        done
+volumes:
+  state:

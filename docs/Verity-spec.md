@@ -274,6 +274,7 @@ Apps implement a small interface the platform invokes at defined moments, over t
 
 - **`health`** — is this instance up and serving
 - **`migrate`** — signalled with the new version context; the app performs its own **schema transformation**
+- **`export`** ([ADR 0010](decisions/0010-export-capability.md)) — holder-authorized, encrypted inside the enclave to a holder-supplied key. **Ownership that cannot survive the custodian is not ownership.** A stateful app that does not implement it should be identifiable as such *before* purchase. No auto-export, ever — explicit holder authorization only, extending I10 in spirit.
 
 **`migrate` moves nothing.** The encrypted volume carries across an in-place upgrade by itself (§2.6). An app needs this hook only when a new version changes its own on-disk layout — so most apps need nothing, and conformance stays cheap.
 
@@ -349,7 +350,7 @@ Milestone = the closed loop: agent discovers → pays → license minted → con
 - **I4.** Payment and license mint are atomic from the agent's perspective (the 402 resource is the mint authorization). ⟳ *Re-verify if the payment path moves to ERC-7710 (§4.2).*
 - **I5.** Manifest version entries are append-only; only the developer address writes.
 - **I6.** Never describe the system as "trustless" — "trust-minimized" / "verifiable" only.
-- **I7.** App state is encrypted with KMS-derived keys bound to attested identity; no plaintext state outside the CVM. ⟳ *Telemetry is the most likely accidental violation; redaction belongs in the collector, not the caller.*
+- **I7.** ⟳ **Amended by [ADR 0010](decisions/0010-export-capability.md).** App state is encrypted with KMS-derived keys bound to attested identity. **No plaintext state leaves the CVM except to the holder, under explicit holder authorization, encrypted in transit to a key only they hold.** The original wording ("no plaintext state outside the CVM") was over-broad: I7 prevents *unauthorized* exposure, and read absolutely it would forbid an owner reaching what they own, contradicting §2.6. *Telemetry remains the most likely accidental violation; redaction belongs in the collector, not the caller.*
 - **I8.** ⟳ **New.** Every image reference in a published `app-compose.json` is a digest, never a tag (§2.2).
 - **I9.** ⟳ **New.** Upgrades are in place. The orchestrator never deploys a fresh CVM for an upgrade (§4.3).
 - **I10.** ⟳ **New.** No automigration: an app never acts on observing a mint, and the orchestrator never initiates a migration it was not asked to perform (§4.7).

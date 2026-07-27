@@ -1,6 +1,6 @@
 # RFC: An `export` capability
 
-**Status:** draft
+**Status:** **accepted — [ADR 0010](../../docs/decisions/0010-export-capability.md)**
 **Date:** 2026-07-27
 **Author:** Claude (agent), for review by Peter
 **Relates to:** spec §1, §2.6, §4.7, invariant I7; [ADR 0005](../../docs/decisions/0005-design-for-smart-accounts-implement-eoa.md),
@@ -139,6 +139,7 @@ purchase-time fact rather than a discovery.
 
 ## Outcome
 
-*Unresolved — awaiting review. If accepted, the capability must land in the bitmap before
-`AppManifest` is finalized (build-order step 1) and in `verity-app-template` before it is published,
-per ADR 0005.*
+**Accepted 2026-07-27 as [ADR 0010](../../docs/decisions/0010-export-capability.md)**, including the
+I7 restatement. `import` deliberately not accepted. Open questions 1–5 do not block the capability
+but do block finishing it. Must land in the bitmap before `AppManifest` is finalized and in the
+template before publication, per ADR 0005.

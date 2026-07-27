@@ -1,0 +1,9 @@
+{
+  "success": true,
+  "is_online": false,
+  "is_public": true,
+  "error": null,
+  "app_certificates": null,
+  "tcb_info": null,
+  "compose_file": null
+}
