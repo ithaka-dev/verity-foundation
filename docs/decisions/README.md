@@ -32,6 +32,9 @@ must be updated to point at it. Silence is how decisions get relitigated by acci
 | [0008](0008-upgrade-is-in-place.md) | Upgrade is in-place; state continuity follows `app_id` | accepted |
 | [0009](0009-verification-model.md) | Verification model: parse the raw quote, compare MR-CONFIG-ID | accepted |
 | [0010](0010-export-capability.md) | Accept the `export` capability; restate I7 | accepted |
+| [0011](0011-app-identity-is-manifest-address.md) | App identity is the `AppManifest` address | accepted |
+| [0012](0012-language-allocation.md) | Language allocation across components | accepted |
+| [0013](0013-create-sibling-repos.md) | Create the sibling repositories now | accepted |
 
 Add a row when you add an ADR.
 

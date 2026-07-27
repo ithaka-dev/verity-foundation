@@ -7,36 +7,16 @@
 
 ---
 
-## ⚠ Annotate these two first — they change issues below
+## Decisions settled 2026-07-27
 
-### A1. `LicenseToken` → `AppManifest` resolution
+All four annotation items resolved. Recorded as ADRs, since each constrains future work.
 
-**Assumed:** app identity **is** the `AppManifest` contract address.
-`tokenId = uint256(keccak256(abi.encode(manifestAddress, version)))`.
-
-Permissionless by construction — no registry, nothing to gate, so §1's no-gatekeeper rule holds
-structurally rather than by policy. `uri(id)` resolves through to the manifest, so metadata has one
-source (§4.1).
-
-*Cost:* `tokenId` is not human-meaningful and cannot be enumerated on-chain without an indexer —
-consistent with the ui-scope RFC, which already constrains the indexer to be optional and
-non-authoritative.
-
-**Affects:** C-08, C-09, C-10. → *reject and the contracts epic needs a registry design first.*
-
-### A2. Language per component
-
-| Component | Assumed | Why |
+| Was | Settled | ADR |
 |---|---|---|
-| `verity-verifier` | **Rust**, + WASM and Node bindings | `dcap-qvl` is Rust; embeds in agents; ADR 0001 already commits this repo to Rust |
-| `verity-contracts` | **Solidity + Foundry** | Only real option |
-| `verity-orchestrator` | **Rust** | Shares quote/chain types with the verifier |
-| `verity-payments` | **TypeScript** | x402 tooling is TS-first, and ADR 0002 marks this disposable — don't invest in a Rust rewrite of throwaway code |
-| `verity-app-template` | **TypeScript** *and* **Python** | It teaches; two idioms reach most developers. See T-11 |
-
-**Affects:** the scaffold issue of every epic. → *the payments/template rows are the contestable ones.*
-
----
+| A1 — token ↔ app resolution | **App identity *is* the `AppManifest` address**; `tokenId = keccak256(manifestAddress, version)`. No registry exists, so §1's no-gatekeeper rule holds structurally rather than by policy | [0011](docs/decisions/0011-app-identity-is-manifest-address.md) |
+| A2 — languages | Rust verifier (+WASM/Node bindings) and orchestrator; Solidity contracts; TypeScript payments (disposable); template in TS **and** Python | [0012](docs/decisions/0012-language-allocation.md) |
+| Sequencing | **Verifier + contracts in parallel**, verifier is Phase 1 — confirmed against spec §6 | this plan |
+| Issue home | **Five sibling repos created now**, issues filed beside their code | [0013](docs/decisions/0013-create-sibling-repos.md) |
 
 ## Approach
 
@@ -298,15 +278,53 @@ Static, IPFS-pinnable; any backend is a deviation requiring written justificatio
 
 ---
 
-## Todo — Phase 3 (annotation)
+## Execution todo
 
-- [ ] Human annotates A1 (`tokenId` scheme) — **blocks C-08/09/10**
-- [ ] Human annotates A2 (languages) — **blocks every scaffold issue**
-- [ ] Confirm verifier-first over spec §6's contracts-first
-- [ ] Confirm issue granularity — split further, or coarser?
-- [ ] Confirm Phase 5 runs parallel rather than deferred
-- [ ] Decide where issues live: GitHub per sibling repo, or tracked centrally until repos exist
-- [ ] Decide whether Phase 6 (UI) belongs in this plan at all or its own later pass
+Mark items complete here as they land — this document is the progress tracker.
 
-**After annotation:** convert to GitHub issues, and archive this plan to `records/plans/` per
-CLAUDE.md.
+### Phase 0 — decisions and repo creation
+- [x] D-01 ADR: `tokenId` scheme → [ADR 0011](docs/decisions/0011-app-identity-is-manifest-address.md)
+- [x] D-02 ADR: language allocation → [ADR 0012](docs/decisions/0012-language-allocation.md)
+- [x] Decision: create sibling repos → [ADR 0013](docs/decisions/0013-create-sibling-repos.md)
+- [x] CLAUDE.md §0 sibling table updated to `active`
+- [ ] **D-03 ADR: verifier update discipline** — gates V-10, the public interface
+- [ ] D-04 ADR: adopt sops-nix
+- [ ] Create 5 GitHub repos (`gh` not installed — see below)
+- [ ] Seed each repo: README, `CLAUDE.md` pointing at this spec/ADRs, scaffold, CI
+- [ ] File 89 issues into their repos
+
+### Phase 1a — verifier (15)
+- [ ] V-01…V-15 — see table above. V-13 (negative suite) and V-10 (public API) are the load-bearing ones
+
+### Phase 1b — contracts (13)
+- [ ] **C-02 first** — the signature dispatch helper, before anything that verifies a signature
+- [ ] C-01, C-03…C-13
+
+### Phase 2 — template + tool (14)
+- [ ] T-01…T-14 — highest review bar in the project (ADR 0005)
+
+### Phase 3a — payments (7) · 3b — orchestrator (12)
+- [ ] P-01…P-07 (disposability in the README title)
+- [ ] O-01…O-12 (O-06 and O-11 exist because I9 fails silently)
+
+### Phase 4 — closed loop (5)
+- [ ] L-01…L-05 — L-02 and L-03 test *different mechanisms*; both required
+
+### Phase 5 — infra (11) · Phase 6 — UI (8)
+- [ ] F-01…F-11 (parallel throughout)
+- [ ] U-01…U-08 (after the loop closes)
+
+### Archive
+- [ ] Move `research.md` + `plan.md` to `records/plans/` when the work concludes, per CLAUDE.md
+
+---
+
+## Blocked on you
+
+**`gh` is not installed**, so I cannot create the five repositories. Options: install it
+(`brew install gh` + `gh auth login`), create them in the GitHub web UI, or authorize me to use the
+GitHub API directly with a token. Everything downstream of repo creation waits on this.
+
+**D-03 should land before V-10.** The verifier's public interface freezes the moment the first agent
+embeds it, and today's research showed the verifier is the component most likely to need security
+updates. Cheap now; expensive after adoption.
