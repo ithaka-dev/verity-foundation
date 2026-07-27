@@ -1,0 +1,312 @@
+# Plan: Verity implementation — phases, epics, issues
+
+**Date:** 2026-07-27
+**Phase:** 2 of Research → Plan → Annotate → Implement
+**Input:** [`research.md`](research.md), `docs/Verity-spec.md`, ADRs 0001–0010, RFCs
+**Output of this document:** a work breakdown. No code.
+
+---
+
+## ⚠ Annotate these two first — they change issues below
+
+### A1. `LicenseToken` → `AppManifest` resolution
+
+**Assumed:** app identity **is** the `AppManifest` contract address.
+`tokenId = uint256(keccak256(abi.encode(manifestAddress, version)))`.
+
+Permissionless by construction — no registry, nothing to gate, so §1's no-gatekeeper rule holds
+structurally rather than by policy. `uri(id)` resolves through to the manifest, so metadata has one
+source (§4.1).
+
+*Cost:* `tokenId` is not human-meaningful and cannot be enumerated on-chain without an indexer —
+consistent with the ui-scope RFC, which already constrains the indexer to be optional and
+non-authoritative.
+
+**Affects:** C-08, C-09, C-10. → *reject and the contracts epic needs a registry design first.*
+
+### A2. Language per component
+
+| Component | Assumed | Why |
+|---|---|---|
+| `verity-verifier` | **Rust**, + WASM and Node bindings | `dcap-qvl` is Rust; embeds in agents; ADR 0001 already commits this repo to Rust |
+| `verity-contracts` | **Solidity + Foundry** | Only real option |
+| `verity-orchestrator` | **Rust** | Shares quote/chain types with the verifier |
+| `verity-payments` | **TypeScript** | x402 tooling is TS-first, and ADR 0002 marks this disposable — don't invest in a Rust rewrite of throwaway code |
+| `verity-app-template` | **TypeScript** *and* **Python** | It teaches; two idioms reach most developers. See T-11 |
+
+**Affects:** the scaffold issue of every epic. → *the payments/template rows are the contestable ones.*
+
+---
+
+## Approach
+
+**The corpus decided almost everything.** Per `research.md`, this plan sequences and decomposes; it
+does not design. Therefore:
+
+1. **Every issue cites the ADR or spec section that constrains it.** An issue that cannot cite one is
+   either trivial or unplanned — treat the absence as a smell.
+2. **Issues are sized to one focused PR** — roughly half a day to two days. Where an issue looks
+   bigger, it is split.
+3. **Invariants get their own test issues.** I8, I9, I10 have never been exercised by code, and
+   I9's failure is *silent* — a working instance with empty state and a valid attestation. It will
+   not surface without a test that hunts for it.
+4. **Committed experiment artifacts become test fixtures.** `records/experiments/artifacts/` holds
+   real quotes, event logs, and compose documents. The verifier's tests are built from measured
+   reality rather than hand-rolled mocks — an unusual luxury; use it.
+
+### Sequencing, and where it departs from spec §6
+
+§6 says contracts first. **This plan starts the verifier and contracts in parallel, and calls the
+verifier Phase 1.** §6 predates ADR 0009 (which collapsed verification to a 48-byte comparison) and
+predates the finding that dstack security fixes land in the verifier layer. The verifier depends on
+nothing we control, is the smallest it will ever be, and is the crown jewel. Contracts block
+payments and the orchestrator — not it.
+
+```
+Phase 0  decisions + scaffolding        ── unblocks all
+Phase 1  verifier ║ contracts           ── parallel, independent
+Phase 2  app template → tool
+Phase 3  payments  ║ orchestrator
+Phase 4  closed loop + state continuity
+Phase 5  control-center infra           ── parallel throughout, off critical path
+Phase 6  UI                             ── after the loop closes
+```
+
+---
+
+## Phase 0 — Decisions and scaffolding
+
+Four ADRs, because each freezes an interface that is expensive to move later.
+
+| # | Issue | Constraint | Size |
+|---|---|---|---|
+| D-01 | **ADR: `tokenId` scheme and app↔manifest resolution** | §1 no-gatekeeper; §4.1 | S |
+| D-02 | **ADR: language and distribution per component** | ADR 0001 precedent | S |
+| D-03 | **ADR: verifier update discipline** — version floors, staleness signalling, how a relying party demands a minimum version | ADR 0005 applies *more* to the verifier than the template; `records/experiments/2026-07-25-cross-version-upgrade.md` | M |
+| D-04 | **ADR: adopt sops-nix**, age keys from SSH host keys | RFC secrets-management; C2 | S |
+
+**D-03 is the one to not skip.** Research showed the verifier is the component most likely to need
+security updates, and its interface freezes the moment the first agent embeds it.
+
+---
+
+## Phase 1a — `verity-verifier` (the crown jewel)
+
+Fully specified by ADR 0009. Build it against committed artifacts.
+
+| # | Issue | Constraint | Size |
+|---|---|---|---|
+| V-01 | Repo scaffold: Rust workspace, CI, lint, deny-warnings | D-02 | S |
+| V-02 | **TDX quote parser** — v4 header + TD report body; extract MRTD, MRCONFIGID, MROWNER, RTMR0–3. Fixtures from `artifacts/` | ADR 0009 | M |
+| V-03 | Compose fetch via `composeURI` (IPFS), with caching — immutable per version | ADR 0006; RFC attestation-binding | S |
+| V-04 | `sha256(compose) == licensed composeHash` | ADR 0006 | S |
+| V-05 | **Compose image-reference validator** — every reference a digest, zero tags | **I8**, ADR 0007 | M |
+| V-06 | **Compose ↔ `imageDigest` cross-check** — the only enforcement an attacker cannot route around | ADR 0007 point 3 | S |
+| V-07 | `MR-CONFIG-ID` reference computation, **branching on the prefix byte** — never assume `0x01` | ADR 0009 | S |
+| V-08 | DCAP signature-chain verification via `dcap-qvl` | ADR 0009 step 4 | M |
+| V-09 | MRTD / RTMR0–2 comparison against known dstack OS image references | ADR 0009 step 6 | M |
+| V-10 | **Refuse-on-mismatch public API** — the surface agents embed. Freeze deliberately | I1; D-03 | M |
+| V-11 | **Structured failure reporting** — *which* check failed, not a boolean | `observability/README.md` | S |
+| V-12 | Version floor / staleness signalling | D-03 | M |
+| V-13 | **Negative test suite**: tag-referenced compose, mutated compose, wrong `imageDigest`, RTMR3 drift across boots, truncated quote | I1, I8 | L |
+| V-14 | WASM + Node bindings | D-02 | M |
+| V-15 | Docs: the three rules, prominently — no RTMR3, branch on prefix, **never loosen a check** | ADR 0009 | S |
+
+> **V-13 carries the weight.** ADR 0009's rule 3 says a verifier will see spurious mismatches and
+> the tempting fix is loosening. The negative suite is what makes loosening fail loudly in CI
+> instead of quietly in production.
+
+---
+
+## Phase 1b — `verity-contracts` (parallel with 1a)
+
+| # | Issue | Constraint | Size |
+|---|---|---|---|
+| C-01 | Repo scaffold: Foundry, CI, gas snapshots | D-02 | S |
+| C-02 | **Signature-verification helper** — dispatch `ecrecover` / ERC-1271 / ERC-6492; smart-account branch **rejects explicitly** with "not supported in MVP" | **ADR 0005 rules 1–3** | M |
+| C-03 | `AppManifest`: version record struct + append-only writes, developer-only writer | **I5**, ADR 0006 | M |
+| C-04 | `AppManifest`: capability bitmap — `health`, `migrate`, `export`; **never an enum tier** | ADR 0006 item 2; ADR 0010 | S |
+| C-05 | `AppManifest`: `upgradePrice(from, to)`, directional | ADR 0004 knob 1 | S |
+| C-06 | `AppManifest`: burn-or-not (**burn default**) and downgrade-permitted knobs | ADR 0004 knobs 2–3 | M |
+| C-07 | `AppManifest`: **atomic burn + mint** | ADR 0008 item 2 | M |
+| C-08 | `LicenseToken` ERC-1155 + **`tokenId` scheme** | **A1**, §2.1 | M |
+| C-09 | `LicenseToken.uri(id)` resolving *through* to manifest metadata | §4.1 | S |
+| C-10 | Mint-authorization verification (consumes the payments flow's signed authorization) | §4.2, I4 | M |
+| C-11 | `AppManifest` deployment mechanism — factory vs direct | research §4.4 | M |
+| C-12 | **Invariant tests**: I5 append-only; burn+mint atomicity; no `ecrecover` reachable outside C-02 | I5, ADR 0005 | M |
+| C-13 | Testnet deploy scripts + verified source | §5 | S |
+
+> **C-02 lands before anything that verifies a signature.** Build it first and the rest cannot
+> reintroduce a raw `ecrecover`. Build it later and something already has.
+
+---
+
+## Phase 2 — `verity-app-template`, then the tool
+
+**ADR 0005 makes this the highest-leverage artifact in the project.** Unpatchable once copied.
+Issues are deliberately smaller and the review bar is higher than internal code.
+
+| # | Issue | Constraint | Size |
+|---|---|---|---|
+| T-01 | Scaffold + **guest agent client on `tappd.sock`** — measured working; `dstack.sock` 404s on 0.5.7 | `records/experiments/2026-07-26-sdk-derived-key-continuity.md` | M |
+| T-02 | `health` endpoint | §4.7 | S |
+| T-03 | **EIP-712 authorization struct** — `licenseId`, `fromDigest`, `toDigest`, `instanceId`, `nonce`, `expiry`, `chainId` | RFC app-lifecycle-contract | M |
+| T-04 | **Verification via a dispatching helper** — `ecrecover` / ERC-1271; smart-account branch rejects explicitly | **ADR 0005**, strongest here | M |
+| T-05 | **Current-holder resolution from chain**, RPC endpoint **pinned in the compose** so the trust dependency is measured | RFC app-lifecycle-contract Q7; §2.6 transferability | M |
+| T-06 | `migrate` hook + tri-state `complete`/`failed`/`needs_holder_action` | §4.7 | M |
+| T-07 | **Idempotent migration, demonstrated** — not merely stated | RFC Q3 | M |
+| T-08 | **`export` capability** — holder-authorized, encrypted in-enclave to holder key | **ADR 0010** | L |
+| T-09 | **Logging discipline**: derive-and-fingerprint as the *only* demonstrated pattern, domain-separated, with a loud `public_logs: true` warning | ADR 0010 rationale; the SDK experiment's self-inflicted leak | S |
+| T-10 | Digest-pinned compose + publish-time tag rejection | **I8**, ADR 0007 point 1 | M |
+| T-11 | Second-language port (TS ↔ Python) | A2 | L |
+| T-12 | **Failure-mode documentation** — what happens when `migrate` fails halfway, what the app may assume about the volume | RFC | M |
+| T-13 | **Adversarial review pass** — explicitly harder than internal code | ADR 0005 | M |
+| T-14 | `verity-tool-<name>`: non-GPU deterministic utility, **deliberately level 0/1** | §5 item 2 | M |
+
+> **T-09 is small and matters more than its size.** I leaked a derived private key into public logs
+> during the SDK experiment *while having already designed the final test to avoid exactly that*.
+> The template teaches the pattern that prevents it, or it teaches the one that causes it.
+
+---
+
+## Phase 3a — `verity-payments` (disposable by design)
+
+> **Repo description, README title, and every issue: "designated throwaway (ADR 0002)."** This is the
+> code people refuse to rewrite. Put the disposability where it cannot be missed.
+
+| # | Issue | Constraint | Size |
+|---|---|---|---|
+| P-01 | Scaffold — disposability in the README title | ADR 0002 cond. 3 | S |
+| P-02 | x402 402 response + payment terms | §4.2 | M |
+| P-03 | EIP-3009 `transferWithAuthorization` handling, **EOA only** | §4.2, ADR 0002 | M |
+| P-04 | **The 402-gated resource is the signed mint authorization** | **I4** | M |
+| P-05 | Payment method **behind an interface** — EIP-3009 is an implementation, not the shape | ADR 0005 rule 5 | S |
+| P-06 | I4 atomicity test from the agent's perspective | I4 | M |
+| P-07 | Testnet USDC end-to-end on Base Sepolia | §5 item 3 | M |
+
+---
+
+## Phase 3b — `verity-orchestrator` (parallel with 3a)
+
+| # | Issue | Constraint | Size |
+|---|---|---|---|
+| O-01 | Scaffold — **no shared datastore with any other service** | CLAUDE.md §0 boundary; I3 | S |
+| O-02 | Chain reader: license → **the holder's licensed version record**, never the newest entry | **ADR 0003** back-door auto-follow trap | M |
+| O-03 | `app_id` ↔ license binding, **chain-recoverable not merely local** | ADR 0008 item 5; §2.8 | M |
+| O-04 | First-deploy path via Phala Cloud API | §4.3 | M |
+| O-05 | **In-place upgrade path** — `--cvm-id`, never a fresh deploy | **I9**, ADR 0008 item 1 | M |
+| O-06 | **Guard: refuse to fresh-deploy where an instance exists** | **I9** | S |
+| O-07 | Redeem endpoint taking a license proof | §4.3 | M |
+| O-08 | `migrate` signal relay — EIP-712 passthrough, orchestrator **carries, never authors** | §4.3 misreading 2 | M |
+| O-09 | Naive concurrency: one live instance per license | §2.9 | S |
+| O-10 | Failure policy + published timeouts; **expiry destroys nothing** | RFC app-lifecycle Q6 | M |
+| O-11 | **I9 regression test** — assert an upgrade preserved `app_id` and state; the failure is silent | **I9** | M |
+| O-12 | I3 test: reject caller-supplied images and "latest version" resolution | **I3**, ADR 0003 | M |
+
+> **O-06 and O-11 exist because I9 fails silently.** A fresh deploy yields a working instance, empty
+> state, and a valid attestation. Nothing errors. Only a test that looks for it will find it.
+
+---
+
+## Phase 4 — Closed loop
+
+| # | Issue | Constraint | Size |
+|---|---|---|---|
+| L-01 | End-to-end: discover → pay → mint → deploy → verify → use | §6 milestone | L |
+| L-02 | **State continuity: kill/restart** — exercises key *stability* | §5 item 6 | M |
+| L-03 | **State continuity: in-place upgrade** — exercises `app_id` *preservation*. **Different mechanism from L-02; passing one says nothing about the other** | §6 step 5 | M |
+| L-04 | Agent refuses on mismatch — deliberately break the compose and prove refusal | **I1** | M |
+| L-05 | Publishing path: resolve tags → digests, refuse tags, show what resolved | §5 item 7, **I8** | M |
+
+---
+
+## Phase 5 — Control-center infrastructure (parallel throughout)
+
+Designed in ADR 0001, never built. Off the critical path to the closed loop.
+
+| # | Issue | Constraint | Size |
+|---|---|---|---|
+| F-01 | Nix flake + base profile | ADR 0001 | M |
+| F-02 | sops-nix wiring, age keys from SSH host keys | D-04; **C2** | M |
+| F-03 | First host under `deployments/hosts/` | ADR 0001 | M |
+| F-04 | OTel semantic conventions — shared attribute names across repos | `observability/` | M |
+| F-05 | **Collector config with redaction processors** — enforcement is collector-side, not caller-side | `observability/`; **I7** | M |
+| F-06 | Grafana / Loki / Tempo / Prometheus Nix modules | ADR 0001 | L |
+| F-07 | Dashboards + alerts as code | `observability/` | M |
+| F-08 | **Alert: attestation verification failure** — the single most important event in the system | `observability/` | S |
+| F-09 | **Alert: verifier loosening its checks** — track which comparisons each verifier performs, not just outcomes | `observability/`; ADR 0009 rule 3 | M |
+| F-10 | Rust service scaffold: MCP + HTTP over shared handlers | ADR 0001 item 2 | M |
+| F-11 | First navigation service | `services/` C1 | M |
+
+> **F-09 is the only signal that watches the verifier rather than the system.** Given §4.5 is the
+> crown jewel and its failure mode is silent self-degradation, it may be the highest-value thing the
+> telemetry layer does.
+
+---
+
+## Phase 6 — `verity-ui` (after the loop closes)
+
+Static, IPFS-pinnable; any backend is a deviation requiring written justification.
+
+| # | Issue | Constraint | Size |
+|---|---|---|---|
+| U-01 | Static scaffold, IPFS-pinnable build | RFC ui-scope Q4 | M |
+| U-02 | **Developer publishing console** — used first chronologically | RFC ui-scope | L |
+| U-03 | Tag→digest resolution display in publishing | **I8** | M |
+| U-04 | **Upgrade decision flow** — guided, three interactions, **no auto-update affordance** | ADR 0003; RFC ui-scope | L |
+| U-05 | "You cannot diff a digest" stated plainly, not dressed as a changelog | ADR 0003 | S |
+| U-06 | `export` request flow + key custody warnings | ADR 0010 | L |
+| U-07 | Attestation evidence viewer — lives in `verity`, not `verity-ui` | RFC ui-scope Q3 | M |
+| U-08 | Every surface shows its underlying contract call / CLI equivalent | RFC ui-scope | M |
+
+---
+
+## Issue template
+
+```markdown
+**Constraint:** <ADR / spec § that binds this — mandatory>
+**Invariant:** <I1–I10 if applicable>
+
+## What
+<one paragraph>
+
+## Acceptance
+- [ ] <observable, testable>
+- [ ] Telemetry emitted per observability/
+- [ ] Cites its constraint in the PR description
+
+## Explicitly out of scope
+<what this issue must not creep into>
+```
+
+---
+
+## Totals
+
+| Phase | Issues | Notes |
+|---|---|---|
+| 0 — decisions | 4 | D-03 gates the verifier's public interface |
+| 1a — verifier | 15 | Buildable now; artifacts as fixtures |
+| 1b — contracts | 13 | C-02 first |
+| 2 — template + tool | 14 | Highest review bar |
+| 3a — payments | 7 | Disposable |
+| 3b — orchestrator | 12 | Two issues exist purely for I9's silence |
+| 4 — closed loop | 5 | The §6 milestone |
+| 5 — infra | 11 | Parallel, off critical path |
+| 6 — UI | 8 | After the loop |
+| **Total** | **89** | |
+
+---
+
+## Todo — Phase 3 (annotation)
+
+- [ ] Human annotates A1 (`tokenId` scheme) — **blocks C-08/09/10**
+- [ ] Human annotates A2 (languages) — **blocks every scaffold issue**
+- [ ] Confirm verifier-first over spec §6's contracts-first
+- [ ] Confirm issue granularity — split further, or coarser?
+- [ ] Confirm Phase 5 runs parallel rather than deferred
+- [ ] Decide where issues live: GitHub per sibling repo, or tracked centrally until repos exist
+- [ ] Decide whether Phase 6 (UI) belongs in this plan at all or its own later pass
+
+**After annotation:** convert to GitHub issues, and archive this plan to `records/plans/` per
+CLAUDE.md.
