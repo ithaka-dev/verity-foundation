@@ -399,30 +399,33 @@ Design is settled; these are the open items, and most are measurements rather th
 - Do deployed x402 facilitators implement ERC-7710? (Gates the AA payment path.)
 - Can ERC-7710 caveats express all five envelope dimensions of §2.7?
 
-> ### ⚠ Open: the dstack OS image cannot be changed in place
+> ### Open (v2 hardening): the dstack OS image is fixed at creation
 >
 > **Three layers upgrade differently, and conflating them overstates the problem** (measured):
 >
 > | Layer | In-place upgradeable? |
 > |---|---|
-> | dstack **OS image** | **No** — `phala deploy --cvm-id … --image` fails validation; `cvms upgrade` takes no image |
+> | dstack **OS image** | **No** — CLI, upstream docs, and the dedicated upgrade command all treat upgrade as compose-only |
 > | dstack **SDK** (library inside the container) | **Yes** — an ordinary compose change |
 > | **App code** | **Yes** |
 >
-> So only a *guest OS / guest agent* defect requires the immovable layer to move. SDK and app
-> defects are ordinary updates, and a KMS or verifier defect is fixed outside the CVM entirely.
+> **Downgraded from "largest open problem" to v2 hardening** after checking the precedent. The
+> Jan–Feb 2026 attestation-pipeline remediation this section's §2.5 cites required **no CVM changes
+> at all** for managed-cloud tenants — Phala's advisory says "No action required for Phala Cloud
+> user." The fixes landed in `dcap-qvl`, the verifier/client side, and the API layer; only
+> self-hosted operators upgraded images.
 >
-> The residual tension is real but narrow: for a guest-OS vulnerability, §2.5 ("keep dstack
-> current") meets §2.6 ("durable possession"). A new CVM means a new `app_id`, which by ADR 0008
-> means no access to prior state.
+> **Which relocates the update discipline to us.** Two of those three fixes were in the layer Verity
+> owns — the verifier. The component most likely to need a security update is `verity-verifier`,
+> embedded in every agent, and ADR 0005's unpatchability argument applies to it *more* than to the
+> template. Open: how a deployed agent learns its verifier is stale, and whether a relying party can
+> insist on a minimum version.
 >
-> **Established for the CLI, not the platform** — the failure is a CLI-side schema check and may be
-> a CLI defect. Confirm against the Cloud API before treating it as a design constraint.
-> ([Experiment](../records/experiments/2026-07-25-cross-version-upgrade.md).)
+> ([Experiment + research](../records/experiments/2026-07-25-cross-version-upgrade.md).)
 >
-> If it proves real, the most promising fix is app-level: an **`export`** capability in the
-> lifecycle contract. The app is inside the enclave and can read its own data, so it can hand the
-> holder an encrypted export that a fresh CVM imports.
+> Independently of all this, holder sovereignty argues for an **`export`** capability —
+> see [RFC export-capability](../records/rfcs/2026-07-27-export-capability.md), which is proposed on
+> its own merits rather than as a contingency against this.
 
 **Open design questions:** ~~all previously listed are now settled~~ — CVM RPC access (pinned in the measured compose), holder-view indexer (optional, non-authoritative, replaceable), static IPFS UI bundle (yes, a constraint not an aspiration), `needs_holder_action` surfacing (orchestrator → UI, plus telemetry), testnet key tier (Tier 1, never promoted to mainnet). See the RFCs in [`../records/rfcs/`](../records/rfcs/).
 

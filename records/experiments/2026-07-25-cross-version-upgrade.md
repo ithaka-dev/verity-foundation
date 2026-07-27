@@ -119,3 +119,80 @@ One `tdx.small` for ~12 minutes, **under $0.02**. CVM deleted.
    question the original RFC asked in a different form, and it returns here with real stakes.
 3. Consider whether `verity-app-template` should demonstrate an **export** capability precisely so
    holders are not trapped by this. That would be an app-level answer to a platform-level gap.
+
+---
+
+## Addendum, 2026-07-27 — upstream research, and why this matters much less than assumed
+
+Follow-up 1 was "establish whether the Cloud API supports OS-image change." Cheaper evidence
+came first, and it changed the priority rather than answering the question.
+
+### The OS image does appear to be fixed at creation
+
+Three independent sources now agree, though none is a categorical statement:
+
+- **The CLI** — `phala deploy --cvm-id … --image` fails validation; `phala cvms upgrade` has no
+  image parameter.
+- **dstack's own upgrade documentation** — upgrade is described purely as selecting or pasting *a
+  compose file*. Guest-image selection appears only in deployment/creation guidance. The docs do
+  not address changing it at upgrade time at all.
+- **The app-id guarantee** — "The app id does not change after the upgrade," which matches our
+  measurement exactly.
+
+Not conclusive: absence from documentation is not refusal by the API. But the case for it being a
+CLI defect has weakened considerably — the dedicated upgrade path in the upstream product is also
+compose-only.
+
+### The motivating scenario largely evaporates
+
+The argument for caring was §2.5: attestation-pipeline vulnerabilities were found and fixed in
+Jan–Feb 2026, so the response to the next one is to upgrade. I used that as the worked example of
+"holders must be able to patch."
+
+**Checking what that remediation actually required: nothing, for anyone on Phala Cloud.**
+
+Phala's write-up states plainly *"No action required for Phala Cloud user."* The fixes landed in:
+
+| Where | What |
+|---|---|
+| `dcap-qvl` (verifier library) | QE Identity verification made a mandatory core check |
+| Verifier / client side | TCB status enforcement, event-log verification semantics, PCCS TLS validation |
+| API layer | SSRF via `pccs_url`, parameter removed from the public API |
+
+Only *self-hosted* dstack operators were told to "upgrade dstack images to v0.5.6." A managed-cloud
+tenant — which is what a Verity holder is — needed no CVM change whatsoever.
+
+**So the precedent for the exact vulnerability class the spec cites is that guest images did not
+need to move.** My framing — that patching dStack would force holders to choose between a
+vulnerable platform and their data — overstated a scenario that has not yet occurred in the way
+described.
+
+### The real lesson points somewhere else entirely
+
+Every one of those fixes was **client-side or infrastructure-side**. Two of the three landed in
+exactly the layer Verity owns: **the verifier**.
+
+That inverts where the update discipline is needed. The component most likely to require a security
+update is not the CVM and not the orchestrator — it is `verity-verifier`, our own code, embedded in
+every agent. Which raises questions we have not asked:
+
+- How does a deployed agent learn its verifier is out of date?
+- Is there a minimum-version floor a relying party can insist on?
+- Since ADR 0005 makes third-party-consumed code unpatchable, does that apply to the verifier
+  *more* than the template?
+
+**Worth noting independently:** Phala's remediation strategy was to make checks *mandatory rather
+than user-configurable*, "shifting responsibility from application developers to infrastructure."
+That is the same conclusion as our verifier rule 3 (never loosen a check to resolve a mismatch) and
+ADR 0009's decision to ship the reference computation rather than let each agent hand-roll it —
+arrived at independently, by people who had just been burned.
+
+### Revised status
+
+The OS-image question is **downgraded from "the largest open problem" to a v2 hardening item.** It
+remains worth confirming with Phala eventually, but it no longer justifies design contortions —
+and `export` should be argued on its own merits rather than as a contingency against it.
+
+**Sources:**
+[dstack Security Update — Attestation Pipeline Hardening](https://phala.com/posts/dstack-security-update-attestation-pipeline-hardening) ·
+[dstack-cloud usage docs](https://github.com/Phala-Network/dstack-cloud/blob/master/docs/usage.md)
