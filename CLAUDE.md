@@ -263,6 +263,14 @@ Recorded in [`docs/decisions/0001-control-center-stack.md`](docs/decisions/0001-
   contracts. Stop, say what you intend, proceed once approved.
 - **HARD FAIL scrutiny** on Solidity security (reentrancy, upgrade safety, audit-readiness) and
   Rust `unsafe`: an explicit logged override is required even with approval.
+- **Reviewer sign-off is a gate** ([ADR 0018](docs/decisions/0018-reviewer-signoff-is-a-gate.md)).
+  Per issue, not per phase: implement → review under the handbook's reviewer guidance for that
+  language → green light → merge. Nothing advances on the author's own judgement that it is fine.
+  `verity-app-template` gets two reviews, TypeScript and Python, because divergence is its risk.
+- **Everything is AGPL-3.0-only** ([ADR 0017](docs/decisions/0017-agpl-for-all-verity-repositories.md)),
+  a deliberate exception to the permissive default. Every tool published from the template inherits
+  copyleft — that is a product stance, and it is effectively irreversible once outside
+  contributions arrive.
 
 **Substantial work**
 - Follow Research → Plan → Annotate → Implement. Plans land in `records/plans/` when the work is

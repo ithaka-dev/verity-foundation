@@ -38,6 +38,8 @@ must be updated to point at it. Silence is how decisions get relitigated by acci
 | [0014](0014-verifier-update-discipline.md) | Verifier update discipline | accepted |
 | [0015](0015-adopt-sops-nix.md) | Adopt sops-nix for operator secrets | accepted |
 | [0016](0016-adopt-chainsafe-handbook.md) | Adopt the ChainSafe Engineering Handbook | accepted |
+| [0017](0017-agpl-for-all-verity-repositories.md) | AGPL-3.0 for all Verity repositories | accepted |
+| [0018](0018-reviewer-signoff-is-a-gate.md) | Reviewer sign-off is a gate | accepted |
 
 Add a row when you add an ADR.
 
