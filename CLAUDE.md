@@ -250,9 +250,23 @@ Recorded in [`docs/decisions/0001-control-center-stack.md`](docs/decisions/0001-
 - Server changes, incidents, and agentic-loop experiments all get a dated entry. An unrecorded
   production change is a defect.
 
+**Engineering practice — [ADR 0016](docs/decisions/0016-adopt-chainsafe-handbook.md)**
+- The [ChainSafe Engineering Handbook](https://handbook.chainsafe.io/llms.txt) is authoritative for
+  *how* we build, across every Verity repo. Consult the relevant section **before** the work, not
+  after. It covers all four of our languages, and its skills are preferred over ad-hoc equivalents.
+- **Where the handbook and Verity's spec/ADRs disagree, ours win.** The handbook cannot know our
+  product invariants. It governs how we build; the spec governs what must be true.
+- **OneFlow branching:** `<handle>/<feature>`, PR into `main`, tags drive deploys. No direct pushes
+  to `main`.
+- **Gates are checkpoints, not refusals** — production, secrets, irreversible writes, external
+  communication, version-control state, repo boundaries, cost, HARD FAIL reviews, operational
+  contracts. Stop, say what you intend, proceed once approved.
+- **HARD FAIL scrutiny** on Solidity security (reentrancy, upgrade safety, audit-readiness) and
+  Rust `unsafe`: an explicit logged override is required even with approval.
+
 **Substantial work**
-- Follow Research → Plan → Annotate → Implement (`research-plan-implement` skill). Plans land in
-  `records/plans/` when the work is done — that is the archive, not the working directory.
+- Follow Research → Plan → Annotate → Implement. Plans land in `records/plans/` when the work is
+  done — that is the archive, not the working directory.
 
 **Naming**
 - Dated artifacts: `YYYY-MM-DD-kebab-title.md`.

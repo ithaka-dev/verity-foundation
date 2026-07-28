@@ -28,6 +28,14 @@ an external document; note the version you relied on, because these move.
 
 | Topic | Reference | Notes |
 |---|---|---|
+| **Engineering practice — authoritative** | [handbook.chainsafe.io/llms.txt](https://handbook.chainsafe.io/llms.txt) | Adopted by [ADR 0016](decisions/0016-adopt-chainsafe-handbook.md). Consult **before** substantive work, not after. Where it and Verity's spec disagree, the spec wins — the handbook governs *how we build*, the spec governs *what must be true*. |
+| ↳ OneFlow branching | [`workflows/oneflow.md`](https://raw.githubusercontent.com/ChainSafe/engineering-handbook/main/workflows/oneflow.md) | `<handle>/<feature>` branches, PR to `main`, tags drive deploys |
+| ↳ Gates and escalation | [`operating-model/gates-and-escalation.md`](https://raw.githubusercontent.com/ChainSafe/engineering-handbook/main/operating-model/gates-and-escalation.md) | Nine gate categories. Checkpoints, not refusals |
+| ↳ Rust | [developer](https://raw.githubusercontent.com/ChainSafe/engineering-handbook/main/languages/rust/developer.md) · [reviewer](https://raw.githubusercontent.com/ChainSafe/engineering-handbook/main/languages/rust/reviewer.md) · [gotchas](https://raw.githubusercontent.com/ChainSafe/engineering-handbook/main/languages/rust/gotchas.md) | Verifier, orchestrator. `unsafe` is HARD FAIL scrutiny |
+| ↳ Solidity | [developer](https://raw.githubusercontent.com/ChainSafe/engineering-handbook/main/languages/solidity/developer.md) · [reviewer](https://raw.githubusercontent.com/ChainSafe/engineering-handbook/main/languages/solidity/reviewer.md) · [gotchas](https://raw.githubusercontent.com/ChainSafe/engineering-handbook/main/languages/solidity/gotchas.md) | Contracts. Reentrancy, upgrade safety, audit-readiness are HARD FAIL |
+| ↳ TypeScript | [developer](https://raw.githubusercontent.com/ChainSafe/engineering-handbook/main/languages/typescript/developer.md) · [reviewer](https://raw.githubusercontent.com/ChainSafe/engineering-handbook/main/languages/typescript/reviewer.md) | Payments, template |
+| ↳ Python | [developer](https://raw.githubusercontent.com/ChainSafe/engineering-handbook/main/languages/python/developer.md) · [reviewer](https://raw.githubusercontent.com/ChainSafe/engineering-handbook/main/languages/python/reviewer.md) | Template |
+| ↳ Skills | [`skills/`](https://github.com/ChainSafe/engineering-handbook/tree/main/skills) | `chainsafe-rust-developer`, `chainsafe-solidity-reviewer`, `chainsafe-research-plan-implement`, and others |
 | Phala dStack | https://docs.phala.network/ | Pin ≥ 0.5.6 (post attestation-pipeline hardening, spec §2.5). Local simulator: `phala simulator start`. |
 | Intel TDX attestation | Intel DCAP / `dcap-qvl` | Quote verification on the agent side, spec §4.5. |
 | x402 | https://x402.org/ | Base-native. The 402-gated resource is the mint authorization, spec §4.2. |

@@ -37,6 +37,7 @@ must be updated to point at it. Silence is how decisions get relitigated by acci
 | [0013](0013-create-sibling-repos.md) | Create the sibling repositories now | accepted |
 | [0014](0014-verifier-update-discipline.md) | Verifier update discipline | accepted |
 | [0015](0015-adopt-sops-nix.md) | Adopt sops-nix for operator secrets | accepted |
+| [0016](0016-adopt-chainsafe-handbook.md) | Adopt the ChainSafe Engineering Handbook | accepted |
 
 Add a row when you add an ADR.
 
