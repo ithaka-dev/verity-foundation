@@ -48,7 +48,7 @@ under `~/Developer/src/github.com/ithaka-dev/`.
 | `verity-verifier` | Agent-side attestation verification library — the crown jewel. Input: endpoint + evidence + licensed digest. Output: boolean, refuse on mismatch. Spec §4.5. **Rust** + WASM/Node bindings. | active |
 | `verity-ui` | Human surfaces. Direction: onboarding-forward — many surfaces, each replaceable. Scope under discussion in [RFC 2026-07-25 ui-scope](records/rfcs/2026-07-25-ui-scope.md). | reserved, RFC open |
 | `verity-app-template` | Reference implementation of the app lifecycle contract (`health`, `migrate`) over the **dStack guest agent**, with idempotent migration demonstrated and failure modes documented. Handler logic stays transport-agnostic; the guest agent is a thin adapter. Kept separate from `verity-tool-<name>` — an example that is also production code becomes neither. Per [ADR 0005](docs/decisions/0005-design-for-smart-accounts-implement-eoa.md) this is the project's highest-leverage artifact: unpatchable once copied, so review it harder than internal code. **TypeScript + Python**. | active |
-| `verity-tool-<name>` | A published tool image — the MVP's one non-GPU deterministic utility. One repo per tool. Spec §5. | planned |
+| `verity-tool-pandoc` | The MVP's published tool: document conversion wrapping Pandoc ([ADR 0020](docs/decisions/0020-mvp-tool-is-pandoc.md)). Stateless, level 0/1, deterministic under flags pinned in the measured compose. Created at Phase 2. One repo per tool. Spec §5. | planned |
 
 ### The orchestrator boundary
 
