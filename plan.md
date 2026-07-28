@@ -15,7 +15,7 @@
 > | 5 infrastructure | 11 | done — Nix written but never evaluated (`nix` not installed) |
 > | 6 UI | 8 | deferred |
 >
-> Two decisions were taken during implementation and are recorded as ADRs rather than left in
+> Three decisions were taken during implementation and are recorded as ADRs rather than left in
 > commit messages: [0021](docs/decisions/0021-app-manifest-deployment-is-unmediated.md),
 > [0022](docs/decisions/0022-economic-terms-are-signed-not-read-late.md) and
 > [0023](docs/decisions/0023-licences-are-per-unit.md). The last of these changed the entitlement
