@@ -1,6 +1,7 @@
 # services/
 
-**Status:** structure only — no code written yet.
+**Status:** one service written (`wayfinder`). MCP and HTTP transports are not yet wired — the
+handlers exist and are tested; the adapters over them are not written.
 
 Small Rust services that help agents navigate Project Verity. Each speaks **MCP** (for agent
 tool-use) and **HTTP/JSON** (for CI, scripts, and any future A2A integration) over the same
