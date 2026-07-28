@@ -1,6 +1,6 @@
 # observability/
 
-**Status:** structure only — no collector config, no conventions written yet.
+**Status:** active — conventions, collector config and alerts are written; dashboards are not.
 
 The telemetry contract. Analytics, logging, and tracing work **uniformly across every Verity
 repo**, and this directory is where that uniformity is defined once.
@@ -11,12 +11,24 @@ deployed by modules in [`../deployments/`](../deployments/). Decided in
 
 ## What this directory owns
 
-- **Semantic conventions** — the attribute names every sibling repo uses for the same concept.
-  `verity.license.id`, `verity.image.digest`, `verity.app.version` must mean the same thing in the
-  orchestrator, the verifier, and the payment endpoint, or cross-component traces are worthless.
-- **Collector configuration** — receivers, processors, exporters. Including the redaction
-  processors (see below).
-- **Dashboards and alerts** — as code, versioned here, not clicked into a Grafana UI.
+- **Semantic conventions** ([`conventions.md`](conventions.md)) — the attribute names every sibling
+  repo uses for the same concept. `verity.compose_hash`, `verity.image_digest`, `verity.version`
+  must mean the same thing in the orchestrator, the verifier and the payment endpoint, or
+  cross-component traces are worthless.
+
+  The conventions are also a **closed set of attributes that are safe to emit**, not a starting
+  point. `verity.license_id` is deliberately *not* among them: licences are per-unit
+  ([ADR 0023](../docs/decisions/0023-licences-are-per-unit.md)), so emitting one links every
+  operation on it into a profile of a single holder. Use `verity.app_manifest` and
+  `verity.version` — enough to debug an app, not enough to follow a person.
+- **Collector configuration** ([`collector.yaml`](collector.yaml)) — receivers, processors,
+  exporters, including the redaction that makes the conventions true rather than merely stated.
+- **Alerts** ([`alerts.yaml`](alerts.yaml)) — as code, versioned here, not clicked into a Grafana
+  UI. Two matter most, and they are different kinds of alert: `AttestationVerificationFailure`
+  watches *the system* and fires when something is wrong; `VerifierStoppedChecking` watches *the
+  verifier* and fires when nothing appears wrong.
+
+- **Dashboards** — not yet written.
 - **The instrumentation guide** every sibling repo follows.
 
 ## The rule that matters most

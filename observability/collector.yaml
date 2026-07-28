@@ -1,0 +1,116 @@
+# OpenTelemetry collector — the enforcement point.
+#
+# ## Why redaction lives here and not in the callers
+#
+# Every service is asked to fingerprint secrets rather than emit them, and the app template makes
+# that the convenient path. But a convention only holds while everyone follows it, and the failure
+# mode is unrecoverable: a value emitted once is stored, indexed and replicated before anyone reads
+# the line.
+#
+# So the collector is where it is *made* true. It sees every span and log from every repository,
+# including ones written by third parties from the template, and it is the last place a value can be
+# stopped. A caller-side rule protects the callers that remembered.
+#
+# **This file fails closed.** Unknown attributes are dropped rather than passed through, so adding
+# telemetry means adding it here too. That is deliberate friction: the alternative is an allowlist
+# that silently grows into a passthrough.
+#
+# Deployed by the Nix module in `deployments/modules/observability.nix`.
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 127.0.0.1:4317
+      http:
+        endpoint: 127.0.0.1:4318
+
+processors:
+  # — 1. Drop attributes that must never exist —
+  #
+  # Deletion by pattern, before anything else runs. A hashed value would still be a value, and
+  # `_fp` fields are already fingerprints by the time they arrive.
+  attributes/strip-secrets:
+    actions:
+      - key: verity.holder
+        action: delete
+      - key: verity.license_id
+        action: delete
+      # Anything a service invented that names itself a secret. The pattern deliberately catches
+      # camelCase too — an earlier version of the app template's own denylist did not, and in a
+      # camelCase codebase that meant it caught almost nothing.
+      - pattern: ^(?i).*(private[_-]?key|secret|passphrase|password|mnemonic|api[_-]?key|credential|seed).*$
+        action: delete
+
+  # — 2. Redact anything shaped like a key that survived step 1 —
+  #
+  # A backstop, not the mechanism. PEM and JWT shapes are unambiguous; bare 64-hex is deliberately
+  # NOT matched, because a bytes32 is that shape and compose hashes are exactly what this pipeline
+  # exists to correlate on.
+  redaction:
+    allow_all_keys: true
+    blocked_values:
+      - '-----BEGIN[A-Z ]*PRIVATE KEY-----'
+      - '\bey[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.'
+    summary: silent
+
+  # — 3. Bound cardinality —
+  #
+  # `verity.refusal_reason` is specified as a stable code. If a service emits free text instead it
+  # becomes an unbounded label, which is both a cost problem and a leak: free text is where a caught
+  # exception quotes a holder's record.
+  transform/enforce-codes:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          - set(attributes["verity.refusal_reason"], "unspecified")
+            where attributes["verity.refusal_reason"] != nil
+              and Len(attributes["verity.refusal_reason"]) > 64
+
+  batch:
+    timeout: 5s
+    send_batch_size: 512
+
+  memory_limiter:
+    check_interval: 1s
+    limit_percentage: 75
+    spike_limit_percentage: 15
+
+exporters:
+  otlphttp/tempo:
+    endpoint: http://127.0.0.1:4319
+  prometheus:
+    endpoint: 127.0.0.1:9464
+  otlphttp/loki:
+    endpoint: http://127.0.0.1:3100/otlp
+
+service:
+  # Order matters: strip, then redact, then bound, then batch. Batching first would mean a secret
+  # sitting in a buffer, which is a smaller window and still a window.
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors:
+        - memory_limiter
+        - attributes/strip-secrets
+        - redaction
+        - transform/enforce-codes
+        - batch
+      exporters: [otlphttp/tempo]
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, attributes/strip-secrets, batch]
+      exporters: [prometheus]
+    logs:
+      receivers: [otlp]
+      processors:
+        - memory_limiter
+        - attributes/strip-secrets
+        - redaction
+        - batch
+      exporters: [otlphttp/loki]
+
+  telemetry:
+    logs:
+      level: info

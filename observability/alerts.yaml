@@ -1,0 +1,164 @@
+# Prometheus alerting rules.
+#
+# Two of these matter more than everything else in this directory, and they are not the same kind of
+# alert:
+#
+#   - `AttestationVerificationFailure` watches **the system**. It fires when something is wrong.
+#   - `VerifierStoppedChecking` watches **the verifier**. It fires when nothing appears wrong.
+#
+# The second is the unusual one and probably the highest-value signal in the project. §4.5 is the
+# crown jewel, and its failure mode is silent self-degradation: a verifier that quietly stops
+# performing a comparison still returns `accepted`, and every other dashboard stays green. Outcomes
+# cannot detect that. Only watching *which checks ran* can.
+
+groups:
+  - name: verity.attestation
+    interval: 30s
+    rules:
+      # — F-08 —
+      #
+      # The single most important event in the system. A refusal means an agent was offered an
+      # endpoint that is not running what its holder licensed — the exact thing Verity exists to
+      # make impossible. It is never routine, and it is never a warning.
+      - alert: AttestationVerificationFailure
+        expr: increase(verity_verify_total{outcome="refused"}[5m]) > 0
+        for: 0m
+        labels:
+          severity: critical
+          invariant: I1
+        annotations:
+          summary: >-
+            A verifier refused an endpoint ({{ $value }} in 5m,
+            reason {{ $labels.refusal }})
+          description: >-
+            `licensed_composeHash == attested_composeHash` did not hold, or the quote did not
+            verify. An agent was offered something other than what its holder licensed.
+
+            This is not a availability problem and must not be treated as one. Do not restart
+            anything, and above all **do not loosen a check to make it pass** — ADR 0009 rule 3.
+            A mismatch is the system working.
+
+            First questions: is `refusal` a mismatch or an unsupported format? An unsupported
+            MR-CONFIG-ID version means the platform changed and the verifier needs updating; a
+            mismatch means do not trust that endpoint.
+          runbook: ../records/runbooks/attestation-failure.md
+
+      # A refusal is loud. A verifier that never runs is silent, and means nobody is checking.
+      - alert: NoVerificationsObserved
+        expr: |
+          sum(increase(verity_verify_total[30m])) == 0
+          and on() (hour() > 6 < 22)
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: No verification has been observed in 30 minutes
+          description: >-
+            Either nothing is using the system, or verification is being skipped. The second
+            degrades Verity to "login plus a container spawn" (§4.5) and looks identical to the
+            first from every other angle.
+
+  - name: verity.verifier-integrity
+    interval: 1m
+    rules:
+      # — F-09 —
+      #
+      # **This watches the verifier, not the system.**
+      #
+      # Each verification reports which comparisons it performed
+      # (`verity.verify.checks` — see conventions.md). A build that stops performing one still
+      # reports `accepted`; outcome-based monitoring cannot see it, and neither can a human, because
+      # nothing looks wrong. The absence is the signal.
+      #
+      # Expressed as "a check that used to run stopped running" rather than "a check is missing",
+      # so it survives a deliberate change to the check set: the alert fires on the transition,
+      # somebody confirms the change was intended, and the baseline moves.
+      - alert: VerifierStoppedChecking
+        expr: |
+          (
+            sum by (check) (increase(verity_verify_check_total[1h])) == 0
+          )
+          and on(check) (
+            sum by (check) (increase(verity_verify_check_total[24h] offset 1h)) > 0
+          )
+        for: 15m
+        labels:
+          severity: critical
+          adr: "0009"
+        annotations:
+          summary: The `{{ $labels.check }}` comparison has stopped running
+          description: >-
+            Verifications are still being reported as accepted, but this comparison is no longer
+            among the checks they performed. A verifier that has stopped checking something reports
+            success exactly as before — this is the only signal that shows it.
+
+            Either a build regressed, or a check was deliberately removed. If deliberate, it needs
+            an ADR superseding 0009 and a note here; if not, treat every acceptance since the
+            transition as unverified.
+          runbook: ../records/runbooks/verifier-stopped-checking.md
+
+      # Loosening usually arrives as tolerance rather than as deletion. Accepting a TCB status other
+      # than UpToDate is the most likely first step, and `dcap-qvl`'s
+      # `danger-allow-tcb-override` feature is the switch that would do it.
+      - alert: VerifierAcceptedDegradedTcb
+        expr: increase(verity_verify_total{tcb_status!="UpToDate", outcome="accepted"}[15m]) > 0
+        for: 0m
+        labels:
+          severity: critical
+          adr: "0014"
+        annotations:
+          summary: A verification was accepted with TCB status {{ $labels.tcb_status }}
+          description: >-
+            ADR 0014 makes TCB enforcement mandatory and CI asserts the override feature is absent.
+            An acceptance here means either the policy was widened at a call site or the feature
+            was enabled — check which before anything else.
+
+      # A verifier reporting a version it does not support is a platform change, not an attack, and
+      # the two look identical if you only compare bytes.
+      - alert: UnsupportedMrConfigIdVersion
+        expr: increase(verity_verify_total{refusal="mrconfigid_unsupported"}[15m]) > 0
+        for: 0m
+        labels:
+          severity: warning
+        annotations:
+          summary: The platform is producing an MR-CONFIG-ID construction this verifier cannot check
+          description: >-
+            Not a mismatch and not an attack: the verifier branched on the prefix byte and found a
+            construction it has no reference for. Holders are being refused correctly, and will keep
+            being refused until the verifier is updated. Re-verify the measurement chain on the new
+            platform version before shipping a change.
+
+  - name: verity.lifecycle
+    interval: 1m
+    rules:
+      # An instance parked here is indistinguishable from a slow migration until somebody looks,
+      # and nobody looks — which is why the lifecycle RFC requires it as telemetry rather than only
+      # as a return value.
+      - alert: MigrationAwaitingHolder
+        expr: verity_migrations_awaiting_holder > 0
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: >-
+            {{ $value }} migration(s) have been waiting on a holder decision for over an hour
+          description: >-
+            The app returned `needs_holder_action`. Nothing is wrong, and nothing will happen until
+            the holder is asked. Confirm the upgrade flow surfaced it.
+
+      # The failure ADR 0008 is about. Should be unreachable — the orchestrator refuses to
+      # fresh-deploy over a running instance — so reaching it means the guard was bypassed or the
+      # platform reallocated an app_id, and in either case a volume is already unreachable.
+      - alert: AppIdChangedDuringUpgrade
+        expr: increase(verity_upgrade_appid_changed_total[5m]) > 0
+        for: 0m
+        labels:
+          severity: critical
+          invariant: I9
+        annotations:
+          summary: An upgrade changed app_id — state continuity is broken
+          description: >-
+            State follows `app_id`. If it changed, the previous encrypted volume is unreachable and
+            the holder's data is gone. The instance will be healthy and will attest correctly, which
+            is why this needs an alert rather than a dashboard.
+          runbook: ../records/runbooks/appid-changed.md
