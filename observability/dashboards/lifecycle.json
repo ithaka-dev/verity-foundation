@@ -1,0 +1,59 @@
+{
+  "title": "Lifecycle — upgrades, migrations, and the failure that is silent",
+  "uid": "verity-lifecycle",
+  "description": "State continuity follows app_id. A fresh deploy where an upgrade belonged produces a working instance, empty state and a valid attestation — so the panels that matter here count guard refusals, not errors.",
+  "tags": ["verity", "lifecycle"],
+  "timezone": "utc",
+  "refresh": "1m",
+  "time": {"from": "now-7d", "to": "now"},
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Upgrades that changed app_id",
+      "description": "Must be zero. A non-zero value means a holder's encrypted volume is already unreachable — and the instance is healthy and attesting correctly, which is why this needs its own panel rather than showing up in an error rate.",
+      "gridPos": {"h": 6, "w": 8, "x": 0, "y": 0},
+      "targets": [{"expr": "sum(increase(verity_upgrade_appid_changed_total[7d]))"}],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "red", "value": 1}
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Fresh deploys refused over a running instance",
+      "description": "The I9 guard firing. Non-zero is *good* — it means something tried to create where an instance existed and was stopped. A sustained rate means a caller is repeatedly taking the wrong path.",
+      "gridPos": {"h": 6, "w": 8, "x": 8, "y": 0},
+      "targets": [{"expr": "sum(increase(verity_deploy_refused_total{reason=\"would_destroy_state\"}[7d]))"}]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Migrations awaiting a holder",
+      "description": "Not an error. An instance parked here is indistinguishable from a slow migration until somebody looks — which is the whole reason it is surfaced rather than only returned.",
+      "gridPos": {"h": 6, "w": 8, "x": 16, "y": 0},
+      "targets": [{"expr": "sum(verity_migrations_awaiting_holder)"}]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Migration outcomes",
+      "description": "Tri-state on purpose: complete / failed / needs_holder_action. A boolean would have forced an app that must ask its owner something to guess or fail.",
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 6},
+      "targets": [
+        {
+          "expr": "sum by (outcome) (rate(verity_migrate_total[15m]))",
+          "legendFormat": "{{outcome}}"
+        }
+      ]
+    }
+  ]
+}

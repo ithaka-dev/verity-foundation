@@ -138,6 +138,17 @@ in
       # that exists nowhere in version control.
       provision = {
         enable = true;
+        # Dashboards from the repository, not clicked into the UI. A dashboard that exists only in
+        # Grafana's database is production configuration with no version history and no review.
+        dashboards.settings.providers = [
+          {
+            name = "verity";
+            options.path = ../../observability/dashboards;
+            # The repository is the source. An edit made in the UI is discarded on reload, which is
+            # the correct direction for something that has to survive rebuilding the host.
+            allowUiUpdates = false;
+          }
+        ];
         datasources.settings.datasources = [
           {
             name = "Prometheus";
