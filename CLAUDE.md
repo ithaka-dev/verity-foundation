@@ -256,11 +256,11 @@ Recorded in [`docs/decisions/0001-control-center-stack.md`](docs/decisions/0001-
   after. It covers all four of our languages, and its skills are preferred over ad-hoc equivalents.
 - **Where the handbook and Verity's spec/ADRs disagree, ours win.** The handbook cannot know our
   product invariants. It governs how we build; the spec governs what must be true.
-- **OneFlow branching is PAUSED until the first release**
+- **OneFlow branching is PAUSED until further notice**
   ([ADR 0019](docs/decisions/0019-defer-oneflow-until-first-release.md)) — commit directly to
-  `main`, no PRs. It resumes automatically at the first tagged version; failing to resume is a
-  defect against that ADR, not an oversight. **Review is not paused** (ADR 0018): dropping the PR
-  drops the venue, not the scrutiny, so review findings go in the commit message.
+  `main`, no PRs. Paused, not cancelled: it returns intact on explicit notice. **Review is not
+  paused** (ADR 0018): dropping the PR drops the venue, not the scrutiny, so review findings go in
+  the commit message, which is now the only place they can live.
 - **Gates are checkpoints, not refusals** — production, secrets, irreversible writes, external
   communication, version-control state, repo boundaries, cost, HARD FAIL reviews, operational
   contracts. Stop, say what you intend, proceed once approved.

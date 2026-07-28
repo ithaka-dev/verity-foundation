@@ -40,7 +40,7 @@ must be updated to point at it. Silence is how decisions get relitigated by acci
 | [0016](0016-adopt-chainsafe-handbook.md) | Adopt the ChainSafe Engineering Handbook | accepted |
 | [0017](0017-agpl-for-all-verity-repositories.md) | AGPL-3.0 for all Verity repositories | accepted |
 | [0018](0018-reviewer-signoff-is-a-gate.md) | Reviewer sign-off is a gate | accepted |
-| [0019](0019-defer-oneflow-until-first-release.md) | Defer OneFlow until the first release (paused, not cancelled) | accepted |
+| [0019](0019-defer-oneflow-until-first-release.md) | Pause OneFlow until further notice (paused, not cancelled) | accepted |
 
 Add a row when you add an ADR.
 

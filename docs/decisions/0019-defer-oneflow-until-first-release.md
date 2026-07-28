@@ -21,15 +21,16 @@ Meanwhile the actual work stalled behind two unmerged branches.
 
 **OneFlow is paused, not cancelled.**
 
-**Until the first release, development commits directly to `main`. No pull requests.**
+**Until further notice, development commits directly to `main`. No pull requests.**
 
-"First release" means the first tagged version of any repository — the point at which someone
-outside the project could reasonably be depending on it.
+**Resumption is by explicit operator notice**, not by a milestone. Nothing about ADR 0016's
+adoption is withdrawn — this suspends one clause indefinitely, and the clause returns intact when
+the pause is lifted.
 
-**At that point OneFlow resumes automatically**, without needing another decision: feature branches,
-pull requests, and tag-driven deploys as [ADR 0016](0016-adopt-chainsafe-handbook.md) describes.
-Nothing about ADR 0016's adoption is withdrawn — this suspends one clause for a stated period, and
-the clause reactivates on a condition rather than on someone remembering.
+**The first tagged release is a recommended point to revisit this, not an automatic trigger.** An
+open-ended pause has no forcing function, so it is worth stating plainly: nothing in the system will
+raise its hand when this stops being the right call. The first release is simply the moment when the
+question — *who checked this, and where is that recorded?* — stops being purely internal.
 
 ### What this does *not* suspend
 
@@ -50,8 +51,8 @@ party to coordinate with.
 
 **Drop pull requests permanently.** Simpler, and tempting given the above. Rejected: the moment
 someone outside depends on a tagged version, "what changed and who checked it" stops being an
-internal question. Tying the resumption to first release means nobody has to remember to revisit
-this.
+internal question — so the mechanism should return, even if the timing is a judgement call rather
+than an event.
 
 **Keep pull requests for security-critical repos only** — the verifier and contracts. Coherent, and
 it was close. Rejected because the boundary needs maintaining and, at one contributor, a
@@ -68,6 +69,8 @@ self-approved PR on the verifier is no more scrutiny than a self-approved PR any
   repositories, publishing releases, filing disclosures.
 - **Commit messages carry more weight.** They are now the only record of review findings, so a
   terse one loses information that a PR thread would have retained.
-- **This is a dated exception with an expiry condition, not a preference.** If the first release
-  arrives and OneFlow does not resume, that is a defect against this ADR rather than a decision
-  nobody got round to.
+- **No forcing function.** This is the honest cost of an open-ended pause versus a
+  condition-triggered one: it persists until someone notices it should not. Recorded here so that
+  noticing is at least possible.
+- **Re-enabling branch protection belongs to whatever lifts this**, along with the choice of
+  whether to backfill PRs for anything already on `main`.
