@@ -88,6 +88,15 @@ The struct grew a field, so the EIP-712 typehash changed and any signature produ
 older shape is invalid. Nothing is deployed, so this costs nothing now; after the first testnet
 deployment a change like this would need a domain-version bump.
 
+**A residual remains, and it is worth stating rather than discovering.** "A mismatch reverts, so
+the holder keeps what they had" is true about the licence and silent about the money. Spec §4.2 and
+invariant I4 make payment and authorization one act settled off-chain, so by the time the mismatch
+reverts the holder has already paid. A developer who toggles `burnOnUpgrade` before each re-issued
+authorization can make a paid-for upgrade permanently unexecutable — a refund problem rather than a
+theft, and strictly better than the burn it replaces, but not nothing. It sits with registry
+withdrawal and developer misbehaviour in the accepted-out-of-scope column: the marketplace handles
+bad developers, not the protocol.
+
 The mutation test that motivated part of this review is now part of the suite's justification: the
 invariant handler attempts a burn-term flip on every `tryGuards` call, so removing the binding is
 caught rather than trusted.
