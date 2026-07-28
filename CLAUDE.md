@@ -209,6 +209,7 @@ docs/            Spec, architecture, decisions (ADRs). The "what and why".
 deployments/     NixOS flake, modules, hosts. Executable descriptions of what runs where.
 services/        Small Rust services that help agents navigate this project (MCP + HTTP/JSON).
 observability/   The telemetry contract: OTel conventions shared by every sibling repo.
+closed-loop/     End-to-end harnesses that span every repo. The apparatus; runs are recorded below.
 records/         Historical record: plans, RFCs, change history, incidents, experiments.
 ```
 

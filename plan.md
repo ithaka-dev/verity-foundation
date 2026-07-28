@@ -1,5 +1,26 @@
 # Plan: Verity implementation — phases, epics, issues
 
+> **Status as of 2026-07-28.** Phases 0–3 and 5 are implemented; Phase 4's harnesses are written
+> but have never been executed, because they need funded keys and TDX capacity that an agent is not
+> given (C5). Phase 6 is deferred with `verity-ui`.
+>
+> | Phase | Issues | State |
+> |---|---|---|
+> | 1a verifier | 15 | done — 91 tests |
+> | 1b contracts | 13 | done — 87 tests, two review rounds absorbed |
+> | 2 template | 13 | done — 79 TS + 58 Python, two adversarial reviews absorbed |
+> | 3a payments | 7 | done — 11 tests; P-07 needs a human to run it |
+> | 3b orchestrator | 12 | done — 15 tests |
+> | 4 closed loop | 5 | **written, never run** — needs hardware and keys |
+> | 5 infrastructure | 11 | done — Nix written but never evaluated (`nix` not installed) |
+> | 6 UI | 8 | deferred |
+>
+> Two decisions were taken during implementation and are recorded as ADRs rather than left in
+> commit messages: [0021](docs/decisions/0021-app-manifest-deployment-is-unmediated.md),
+> [0022](docs/decisions/0022-economic-terms-are-signed-not-read-late.md) and
+> [0023](docs/decisions/0023-licences-are-per-unit.md). The last of these changed the entitlement
+> model after a review found that any holder of a version could act on any other holder's instance.
+
 **Date:** 2026-07-27
 **Phase:** 2 of Research → Plan → Annotate → Implement
 **Input:** [`research.md`](research.md), `docs/Verity-spec.md`, ADRs 0001–0010, RFCs
