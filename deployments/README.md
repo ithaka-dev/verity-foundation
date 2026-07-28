@@ -1,6 +1,8 @@
 # deployments/
 
-**Status:** structure only — no flake, no modules written yet.
+**Status:** written, **not yet evaluated.** `nix` is not installed on the machine these were
+authored on, so `nix flake check` has never run against them. Treat every module here as unverified
+until it has been built once — and when it is, that build is the record, not this sentence.
 
 Executable descriptions of what runs where, in NixOS. Prose describing infrastructure is a
 liability; this directory exists so there is nowhere such prose needs to live.
@@ -13,9 +15,23 @@ the module is correct and the document is a bug. Do not "fix" the module to matc
 ```
 flake.nix      Entry point. Pins nixpkgs, exposes nixosConfigurations for every host.
 modules/       Reusable NixOS modules. One concern each; composed by hosts.
+  base.nix          The small common floor: nix settings, SSH, firewall, generation marker.
+  secrets.nix       sops-nix. Age identity derived from the host's SSH key (ADR 0015).
+  observability.nix Collector, Prometheus, Loki, Tempo, Grafana — all on loopback.
 hosts/         One directory per machine. Imports modules, sets what is unique to that machine.
-profiles/      Named bundles of modules for a class of machine (e.g. "observability host").
+  atlas/            The observability host.
+profiles/      Named bundles of modules for a class of machine. Empty until a second host exists.
 ```
+
+## C2 is a build gate, not a review habit
+
+`flake.nix` exposes a `no-committed-secrets` check that greps the evaluated configuration for
+key-shaped material. A reviewer catches this most of the time; "most of the time" is not a property,
+and the cost of missing once is a key in git history forever.
+
+The observability module consumes `observability/collector.yaml` and `observability/alerts.yaml`
+**directly** — not copies. A copy is a second source of truth, and the drift is invisible until an
+alert that exists in the repository turns out never to have been loaded.
 
 ## Conventions
 
