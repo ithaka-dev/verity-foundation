@@ -1,6 +1,7 @@
 # closed-loop/
 
-**Status:** harnesses written, **never executed.**
+**Status:** harnesses written, **never executed.** The contracts they run against *are* deployed —
+see [`../records/experiments/2026-07-30-first-testnet-deployment.md`](../records/experiments/2026-07-30-first-testnet-deployment.md).
 
 The end-to-end runs that prove the system works as one thing rather than as six that each pass their
 own tests. Phase 4 of [`../plan.md`](../plan.md).
@@ -14,11 +15,12 @@ of them — and it needs somewhere it can be executed from.
 
 ## Nothing here has been run
 
-Every script below needs things an agent does not have and must not be given (**C5**):
+Every script below needs things an agent does not have (**C5**):
 
-- a funded Base Sepolia key,
-- a Phala Cloud account with TDX capacity,
-- deployed `LicenseToken` and `AppManifest` contracts.
+- ~~a funded testnet key~~ — done, Ethereum Sepolia,
+- ~~deployed `LicenseToken` and `AppManifest`~~ — done, addresses in the experiment record,
+- **a Phala Cloud account with TDX capacity** — outstanding, and the reason none of these have run,
+- testnet USDC, for the payment leg only.
 
 **A human runs these.** The scripts read everything from the environment, so no key is ever written
 into a file here or seen by an agent. Until one has been run, treat the milestone as unproven —

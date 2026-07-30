@@ -1,3 +1,6 @@
+# Disposable testnet key for the Phase 4 closed-loop runs. Never committed — see .local/README.md.
+.local/
+
 # Nix
 result
 result-*
