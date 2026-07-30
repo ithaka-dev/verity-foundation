@@ -1,8 +1,11 @@
 # deployments/
 
-**Status:** written, **not yet evaluated.** `nix` is not installed on the machine these were
-authored on, so `nix flake check` has never run against them. Treat every module here as unverified
-until it has been built once — and when it is, that build is the record, not this sentence.
+**Status:** evaluated. `nix flake check` passes, and the gates in `flake.nix` genuinely run — the
+C2 secret check was verified by planting a key-shaped value and watching the build fail.
+
+**Still never deployed to a machine.** `hosts/atlas/hardware.nix` is a placeholder;
+`nixos-generate-config` writes the real one from the box, and its UUIDs are deliberately obvious
+nonsense so they get replaced rather than deployed.
 
 Executable descriptions of what runs where, in NixOS. Prose describing infrastructure is a
 liability; this directory exists so there is nowhere such prose needs to live.
