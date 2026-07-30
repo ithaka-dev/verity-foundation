@@ -17,10 +17,24 @@
   };
 
   outputs =
-    { self, nixpkgs, sops-nix }:
+    {
+      self,
+      nixpkgs,
+      sops-nix,
+    }:
     let
+      # Hosts are Linux; the checks are not. An earlier version defined `checks` for x86_64-linux
+      # only, so on a developer's Mac `nix flake check` reported "all checks passed" having run
+      # none of them — the C2 secret gate included. A gate that silently does not run is worse than
+      # an absent one, because it is believed.
       system = "x86_64-linux";
-      pkgs = nixpkgs.legacyPackages.${system};
+      checkSystems = [
+        "x86_64-linux"
+        "aarch64-linux"
+        "x86_64-darwin"
+        "aarch64-darwin"
+      ];
+      forAllSystems = f: nixpkgs.lib.genAttrs checkSystems (s: f nixpkgs.legacyPackages.${s});
     in
     {
       nixosModules = {
@@ -44,7 +58,7 @@
         };
       };
 
-      checks.${system} = {
+      checks = forAllSystems (pkgs: {
         # C2 as a build-time gate rather than a review habit.
         #
         # Greps the evaluated configuration for anything that looks like a committed secret. A
@@ -65,14 +79,15 @@
 
         # The alert rules and collector config are consumed by the observability module, so a
         # syntax error there should fail the build rather than the deployment.
-        observability-config-parses = pkgs.runCommand "observability-config-parses"
-          { buildInputs = [ pkgs.yq-go ]; } ''
-          yq -e '.' ${../observability/collector.yaml} > /dev/null
-          yq -e '.groups | length > 0' ${../observability/alerts.yaml} > /dev/null
-          touch $out
-        '';
-      };
+        observability-config-parses =
+          pkgs.runCommand "observability-config-parses" { buildInputs = [ pkgs.yq-go ]; }
+            ''
+              yq -e '.' ${../observability/collector.yaml} > /dev/null
+              yq -e '.groups | length > 0' ${../observability/alerts.yaml} > /dev/null
+              touch $out
+            '';
+      });
 
-      formatter.${system} = pkgs.nixfmt-rfc-style;
+      formatter = forAllSystems (pkgs: pkgs.nixfmt-rfc-style);
     };
 }

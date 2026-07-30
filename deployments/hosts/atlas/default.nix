@@ -5,6 +5,10 @@
 { ... }:
 
 {
+  # Placeholder until this host is provisioned — see hardware.nix. Without it the configuration
+  # cannot be evaluated, and none of the flake checks run.
+  imports = [ ./hardware.nix ];
+
   networking.hostName = "atlas";
 
   verity.observability = {

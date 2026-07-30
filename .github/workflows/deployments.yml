@@ -1,0 +1,23 @@
+name: deployments
+
+on:
+  push:
+    branches: [main]
+    paths: ['deployments/**', 'observability/**', '.github/workflows/deployments.yml']
+  pull_request:
+    paths: ['deployments/**', 'observability/**', '.github/workflows/deployments.yml']
+
+jobs:
+  flake-check:
+    name: nix flake check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+      # Runs the host evaluation *and* the gates — C2's secret grep and the observability config
+      # parse. Both are defined for every system rather than for x86_64-linux alone: an earlier
+      # version reported "all checks passed" on a developer's Mac having run neither, and a gate
+      # that silently does not run is worse than an absent one, because it is believed.
+      - run: nix flake check ./deployments --print-build-logs
+      - run: nix fmt ./deployments -- --check

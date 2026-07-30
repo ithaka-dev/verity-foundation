@@ -3,7 +3,12 @@
 # The collector config and the alert rules are *the files in `observability/`*, not copies of them.
 # A copy is a second source of truth that drifts, and the drift is invisible until an alert that
 # exists in the repository turns out never to have been loaded.
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 let
   cfg = config.verity.observability;
@@ -66,7 +71,10 @@ in
       configuration = {
         route = {
           receiver = "default";
-          group_by = [ "alertname" "severity" ];
+          group_by = [
+            "alertname"
+            "severity"
+          ];
           # Critical alerts here are attestation failures and silent verifier degradation. Neither
           # should wait for a grouping window.
           group_wait = "10s";

@@ -2,7 +2,12 @@
 #
 # Deliberately small. A base module that grows becomes the place where host-specific behaviour hides
 # behind a conditional, and then no host's configuration can be read on its own.
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 {
   # — the machine —
@@ -12,7 +17,10 @@
 
   nix = {
     settings = {
-      experimental-features = [ "nix-command" "flakes" ];
+      experimental-features = [
+        "nix-command"
+        "flakes"
+      ];
       # Builds must not depend on who is running them.
       sandbox = true;
       trusted-users = [ "root" ];
