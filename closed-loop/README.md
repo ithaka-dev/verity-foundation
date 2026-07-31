@@ -1,6 +1,6 @@
 # closed-loop/
 
-**Status:** harnesses written, **never executed.** The contracts they run against *are* deployed —
+**Status:** L-04 has run and passed (2026-07-31). The rest are written and never executed. The contracts they run against *are* deployed —
 see [`../records/experiments/2026-07-30-first-testnet-deployment.md`](../records/experiments/2026-07-30-first-testnet-deployment.md).
 
 The end-to-end runs that prove the system works as one thing rather than as six that each pass their
@@ -19,7 +19,7 @@ Every script below needs things an agent does not have (**C5**):
 
 - ~~a funded testnet key~~ — done, Ethereum Sepolia,
 - ~~deployed `LicenseToken` and `AppManifest`~~ — done, addresses in the experiment record,
-- **a Phala Cloud account with TDX capacity** — outstanding, and the reason none of these have run,
+- ~~a Phala Cloud account with TDX capacity~~ — available; L-04 has used it,
 - testnet USDC, for the payment leg only.
 
 **A human runs these.** The scripts read everything from the environment, so no key is ever written
@@ -36,7 +36,7 @@ archive; this is the apparatus.
 | `01-full-loop.sh` | discover → pay → mint → deploy → verify → use | The milestone. |
 | `02-continuity-restart.sh` | keys survive a kill/restart | Exercises key **stability**. |
 | `03-continuity-upgrade.sh` | `app_id` and state survive an in-place upgrade | Exercises `app_id` **preservation** — a different mechanism, so passing 02 says nothing about 03. |
-| `04-refuses-on-mismatch.sh` | an agent refuses a deliberately broken compose | I1. The one that proves the guarantee is real rather than merely configured. |
+| `04-refuses-on-mismatch.sh` | an agent refuses a deliberately broken compose | I1. The one that proves the guarantee is real rather than merely configured. **Run 2026-07-31, both directions.** |
 | `05-publishing-refuses-tags.sh` | the publishing path resolves tags to digests and refuses a tag | I8, ADR 0007. |
 
 **02 and 03 look like the same test and are not.** A restart re-derives keys for an unchanged
@@ -45,3 +45,8 @@ implementation can pass either while failing the other, and the failure mode of 
 
 **04 is the one to run first when anything changes.** Every other script here can pass while the
 system quietly guarantees nothing; 04 is the only one that fails if the binding stops being enforced.
+
+It costs money — one small CVM, deleted on any exit including a failed assertion, because a CVM left
+running because a test failed is a test that costs money every time it fails. The
+[run record](../records/experiments/2026-07-31-l04-verifier-refuses-on-mismatch.md) has the result
+and the two defects that only running it found.

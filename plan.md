@@ -1,6 +1,6 @@
 # Plan: Verity implementation — phases, epics, issues
 
-> **Status as of 2026-07-30.** Phases 0–3 and 5 are implemented; Phase 4's harnesses are written
+> **Status as of 2026-07-31.** Phases 0–3 and 5 are implemented; Phase 4's harnesses are written
 > but have never been executed, because they need funded keys and TDX capacity that an agent is not
 > given (C5). Phase 6 is deferred with `verity-ui`.
 >
@@ -11,7 +11,7 @@
 > | 2 template | 13 | done — 79 TS + 58 Python, two adversarial reviews absorbed |
 > | 3a payments | 7 | done — 11 tests; P-07 needs a human to run it |
 > | 3b orchestrator | 12 | done — 15 tests |
-> | 4 closed loop | 5 | **written, never run** — contracts are deployed on Sepolia; needs TDX capacity |
+> | 4 closed loop | 5 | **L-04 run and passed**; L-01/02/03/05 written, never run |
 > | 5 infrastructure | 11 | done — `nix flake check` passes; never deployed to a machine |
 > | 6 UI | 8 | deferred |
 >
