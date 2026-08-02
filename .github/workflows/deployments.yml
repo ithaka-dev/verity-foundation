@@ -20,4 +20,12 @@ jobs:
       # version reported "all checks passed" on a developer's Mac having run neither, and a gate
       # that silently does not run is worse than an absent one, because it is believed.
       - run: nix flake check ./deployments --print-build-logs
-      - run: nix fmt ./deployments -- --check
+      # `nix fmt` resolves the flake from the working directory, so it must be run from inside
+      # `deployments/` — passing the path as an argument made it look for a flake at the repo root
+      # and fail, which is how this job was red from the day it was added.
+      #
+      # Explicit file list rather than `.`: nixfmt deprecates directory arguments, and a deprecation
+      # that becomes an error later would break this the same silent way.
+      - name: nix fmt --check
+        working-directory: deployments
+        run: nix fmt -- --check $(git ls-files '*.nix')
