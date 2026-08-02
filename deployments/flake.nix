@@ -77,6 +77,37 @@
           touch $out
         '';
 
+        # Every file in `secrets/` is actually encrypted.
+        #
+        # Stronger than grepping for key shapes, and cheaper: a sops file *proves* it is encrypted
+        # by carrying `ENC[` values and a `sops:` block. Anything in there without both is either
+        # plaintext or something that does not belong, and both should fail the build rather than
+        # reach a commit.
+        #
+        # The previous C2 check only looked at `deployments/**/*.nix`, so a plaintext key in
+        # `secrets/` would have passed it — and the directory was ignored wholesale, which hid the
+        # gap by making the question look moot.
+        secrets-are-encrypted = pkgs.runCommand "secrets-are-encrypted" { } ''
+          set -euo pipefail
+          shopt -s nullglob
+          found=0
+          for f in ${../secrets}/*; do
+            case "$(basename "$f")" in
+              README.md|.gitignore) continue ;;
+            esac
+            found=1
+            if ! grep -q 'ENC\[' "$f" || ! grep -q '^sops:' "$f"; then
+              echo "::error::$(basename "$f") in secrets/ is not sops-encrypted"
+              exit 1
+            fi
+            echo "ok: $(basename "$f") is encrypted"
+          done
+          if [ "$found" = "0" ]; then
+            echo "no secrets yet — nothing to check, and the safest secret is the one nobody created"
+          fi
+          touch $out
+        '';
+
         # The alert rules and collector config are consumed by the observability module, so a
         # syntax error there should fail the build rather than the deployment.
         observability-config-parses =

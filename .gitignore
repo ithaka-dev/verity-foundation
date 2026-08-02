@@ -15,7 +15,18 @@ target/
 .env
 .env.*
 !.env.example
-secrets/
+# NOT `secrets/` wholesale. sops-nix's model is that **encrypted** files are committed — that is
+# what makes a secret's existence and its rotation reviewable, and `deployments/modules/secrets.nix`
+# points at `secrets/atlas.yaml` expecting to find it in the repo. Ignoring the directory meant a
+# fresh clone could never deploy, and meant this project's own documentation of the model was itself
+# uncommitted.
+#
+# What must never be committed is *plaintext*. These are the shapes a decrypt produces.
+secrets/*.dec.*
+secrets/*.plain.*
+secrets/*.decrypted.*
+secrets/**/*.key
+secrets/**/*.pem
 
 # Machine-local agent permission state — absolute paths, not portable
 .claude/settings.local.json
