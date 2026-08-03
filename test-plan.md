@@ -148,3 +148,49 @@ The highest-value items on this plan, and the reason the rest is not enough.
 
 Percentages are the floor. **The mutation scores are the actual measure**, because the one time this
 project measured them it discovered the suite caught 2 defects in 12 while looking fully covered.
+
+---
+
+## Progress
+
+Appended as work lands, per the write-once convention: this section records what happened, and
+corrections go below rather than over.
+
+**Done:** T-01–T-06, T-08, T-09, T-11, T-12, T-16, T-19. T-18 for `verity-contracts` only.
+
+| Repo | Then | Now |
+|---|---|---|
+| `verity-contracts` | 98.9% lines, 80.5% branches | **100%** lines / statements / branches / functions; mutation 15/15 |
+| `verity-verifier` | 70.4% lines | **90.3%** — `verdict.rs` 99%, wasm bindings 90.5%, `compose.rs` 96% |
+| `verity-app-template` (Py) | 79% | 91% |
+
+### What the tests found that coverage never would
+
+Three defects, each in code that existed and looked right. This is the argument for the plan's
+premise, and it is stronger than the percentages above.
+
+1. **A genuine quote from a platform with a known-vulnerable TCB returned `is_trustworthy() ==
+   true`** (T-11). ADR 0014 decision 2 calls TCB enforcement mandatory and not configurable, and
+   `verify` did record the refusal — but `TcbStatus` was absent from `Check::essential()`, and the
+   boolean is derived from that list. The enforcement was honest in the transcript and missing from
+   the answer. `TcbStatus` did not appear in a single test in the crate.
+
+2. **`forge test` failed roughly one run in twelve** (T-08). `upgrade` and `tryGuards` both need two
+   versions on the manifest the fuzzer happened to pick, and both returned silently when it had
+   fewer — which under `fail_on_revert = false` is indistinguishable from work. The vacuity guard in
+   `afterInvariant` was right to fail; the handler was wrong. Six apparent "reproductions" while
+   diagnosing it were one stale entry in `cache/invariant`, which foundry replays until cleared.
+
+3. **The WASM bindings' verdict logic could not be tested at all** (T-12), because it was fused to
+   `JsValue`, which exists only on wasm32. CI built the crate for that target and never ran it. The
+   property most worth asserting — that a compose-only verdict is *never* trustworthy, since these
+   bindings cannot verify a signature — had nothing behind it.
+
+The shape they share: each was a check that existed, was believed to run, and did not. That is the
+same shape as the four CI gates that were green while doing nothing earlier this week, and it is
+why the "what done looks like" bullet above says *verified by removing it, not by assuming*.
+
+### Still open
+
+T-07 (behavioural parity harness), T-10, T-13 (orchestrator), T-14 (wayfinder), T-15 (`quote.rs`
+property tests), T-17 (verifier mutation testing), T-18 for the remaining repos.
