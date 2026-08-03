@@ -276,6 +276,19 @@ Recorded in [`docs/decisions/0001-control-center-stack.md`](docs/decisions/0001-
   copyleft — that is a product stance, and it is effectively irreversible once outside
   contributions arrive.
 
+**Every push is verified — non-negotiable**
+- After pushing to **any** repo, check that CI passed. Not that it was triggered, not that it was
+  green last time: that *this run* completed and every job succeeded.
+- **A job that did not run is not a job that passed.** Read the step list, not just the conclusion.
+  This project has shipped, in one week: a `deployments` workflow red from the day it was added, a
+  `forge fmt --check` failure hidden by `&& echo "ok"`, a gate defined for the wrong platform that
+  reported "all checks passed" having built nothing, and a mutation harness scoring 15/15 while
+  `forge` rejected its own command line 15 times. Every one of them looked fine from a distance.
+- **Suspicious speed is a failure signal.** A job that finishes far faster than the work it claims
+  to do has skipped the work. The mutation harness gave itself away with 0.06-second "test runs".
+- A gate is only trustworthy once it has been seen to **fail**. Break the thing it guards, watch it
+  go red, put it back.
+
 **Substantial work**
 - Follow Research → Plan → Annotate → Implement. Plans land in `records/plans/` when the work is
   done — that is the archive, not the working directory.
