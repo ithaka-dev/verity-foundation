@@ -156,7 +156,7 @@ project measured them it discovered the suite caught 2 defects in 12 while looki
 Appended as work lands, per the write-once convention: this section records what happened, and
 corrections go below rather than over.
 
-**Done:** T-01–T-06, T-08, T-09, T-11, T-12, T-16, T-19. T-18 for `verity-contracts` only.
+**Done:** T-01–T-17, T-19. T-18 for `verity-contracts` only.
 
 | Repo | Then | Now |
 |---|---|---|
@@ -190,7 +190,42 @@ The shape they share: each was a check that existed, was believed to run, and di
 same shape as the four CI gates that were green while doing nothing earlier this week, and it is
 why the "what done looks like" bullet above says *verified by removing it, not by assuming*.
 
+### Second pass: T-07, T-10, T-13, T-14, T-17
+
+| Repo | Then | Now |
+|---|---|---|
+| `verity-orchestrator` | 77.8% lines | **97.9%** — `types.rs` 97.5%, `relay.rs` 100% |
+| `services/wayfinder` | 95.1% lines, **no CI at all** | 98.4%, and a CI workflow that exists |
+| `verity-verifier` | — | mutation harness, 14/14, in CI |
+| `verity-app-template` | value parity only | behavioural parity, 19 shared cases |
+
+Four more defects, in the same shape as the first three — a check that existed, was believed to
+run, and did not.
+
+4. **Python had no maximum-lifetime check while TypeScript did** (T-07). Both languages computed
+   byte-identical EIP-712 digests for an authorization valid until the year 2100, agreed on every
+   value in `parity.json`, and then one honoured it and the other refused. An unbounded expiry
+   turns one holder act into a standing permission held by the orchestrator — the component §2.8
+   says must become untrusted — and for `export` that is a standing right to read the holder's
+   data. No value vector could have seen it, because no value differed.
+
+5. **Comparing only the first half of `MR-CONFIG-ID` passed the verifier's entire suite** (T-17).
+   Exactly the shape ADR 0009 rule 3 forbids, and exactly how a loosening happens: nobody deletes a
+   check, they weaken a comparison. It survived because every mismatch test altered a byte near the
+   front of the hash, and the first 16 bytes of a measurement are the prefix plus only the first 15
+   bytes of the hash.
+
+6. **`services/wayfinder` had no CI** (T-14) — not a gate passing while doing nothing, but no gate.
+   This repo's only workflow is path-filtered to `deployments/**`, so a Rust service's tests had
+   only ever run on somebody's laptop. Its `DescribeRepo` had also only ever been asked about a
+   repository that does not exist: the refusal was covered, the answer was not.
+
+7. **`relay.rs`'s accessors were untested because the suite compared whole structs** (T-13).
+   Swapping `signature()` and `claimed_signer()` leaves all eleven pre-existing tests green while
+   every relay sends an address where a signature belongs. Demonstrated, not argued.
+
 ### Still open
 
-T-07 (behavioural parity harness), T-10, T-13 (orchestrator), T-14 (wayfinder), T-15 (`quote.rs`
-property tests), T-17 (verifier mutation testing), T-18 for the remaining repos.
+T-15 is done; T-18 remains for every repo but `verity-contracts`. `verity-payments` and the
+template have no coverage floors, and the two Rust crates have none either — which is the gap that
+lets a number slide back down quietly.
