@@ -1,0 +1,50 @@
+name: services
+
+# `services/wayfinder` is a Rust crate that had **no CI at all**. Its tests had only ever run on
+# whoever's laptop last touched them, which is the same shape as the four gates this project shipped
+# green-while-doing-nothing in one week — except here there was nothing to be green.
+#
+# Path-filtered like `deployments.yml`, so a documentation commit does not spin up a Rust toolchain.
+# The filter includes this file: a workflow that cannot re-run itself on its own change is a workflow
+# whose edits are unverified.
+on:
+  push:
+    branches: [main]
+    paths: ['services/**', '.github/workflows/services.yml']
+  pull_request:
+    paths: ['services/**', '.github/workflows/services.yml']
+
+jobs:
+  wayfinder:
+    name: wayfinder · fmt · clippy · test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/wayfinder
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: services/wayfinder
+      - run: cargo fmt --all -- --check
+      # `-D warnings` rather than a bare clippy run. The crate sets `unwrap_used`, `expect_used` and
+      # `panic` to `warn`, which without this flag means they are advisory and nothing enforces them.
+      - run: cargo clippy --all-targets --all-features -- -D warnings
+      - run: cargo test --all-features
+
+  # C1: this service navigates the project and must never join the licence, attestation or payment
+  # path. That boundary is one dependency away from gone — adding an RPC client or a signing crate
+  # here would be the first step, and it would look like a convenience.
+  #
+  # Asserted against the manifest rather than trusted, because C1 is a repo invariant and the whole
+  # argument for `services/` existing at all is that it stays on the other side of it.
+  no-product-dependencies:
+    name: navigation only, never the trust path
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: no chain, crypto or attestation dependencies
+        run: python3 services/wayfinder/check-navigation-only.py
