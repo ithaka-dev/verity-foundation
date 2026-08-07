@@ -1,22 +1,31 @@
 # Plan: Verity implementation — phases, epics, issues
 
-> **Status as of 2026-07-31.** Phases 0–3 and 5 are implemented; Phase 4's harnesses are written
-> but have never been executed, because they need funded keys and TDX capacity that an agent is not
-> given (C5). Phase 6 is deferred with `verity-ui`.
+> **Status as of 2026-08-04.** Phases 0–3 and 5 are implemented and have since been hardened;
+> Phase 4's harnesses are written but only L-04 has run, because the rest need funded keys and TDX
+> capacity an agent is not given (C5). Phase 6 is deferred with `verity-ui`.
 >
-> | Phase | Issues | State |
-> |---|---|---|
-> | 1a verifier | 15 | done — 91 tests |
-> | 1b contracts | 13 | done — 87 tests, two review rounds absorbed |
-> | 2 template | 13 | done — 79 TS + 58 Python, two adversarial reviews absorbed |
-> | 3a payments | 7 | done — 11 tests; P-07 needs a human to run it |
-> | 3b orchestrator | 12 | done — 15 tests |
-> | 4 closed loop | 5 | **L-04 run and passed**; L-01/02/03/05 written, never run |
-> | 5 infrastructure | 11 | done — `nix flake check` passes; never deployed to a machine |
-> | 6 UI | 8 | deferred |
+> | Phase | Issues | State | Tests |
+> |---|---|---|---|
+> | 1a verifier | 15 | done | 175 (was 91) |
+> | 1b contracts | 13 | done, deployed to Sepolia | 108 (was 87) |
+> | 2 template | 13 | done | 141 TS + 110 Py (was 79 + 58) |
+> | 3a payments | 7 | done — P-07 needs a human to run it | 26 (was 11) |
+> | 3b orchestrator | 12 | done | 42 (was 15) |
+> | 4 closed loop | 5 | **L-04 run and passed**; L-01/02/03/05 written, never run | — |
+> | 5 infrastructure | 11 | done — `nix flake check` passes; never deployed to a machine | — |
+> | 6 UI | 8 | deferred | — |
 >
-> Four decisions were taken during implementation and are recorded as ADRs rather than left in
-> commit messages: [0021](docs/decisions/0021-app-manifest-deployment-is-unmediated.md),
+> **A test-hardening pass ran 2026-08-02 → 08-04** against
+> [`test-plan.md`](test-plan.md): T-01 through T-17 and T-19 landed, T-18 only in
+> `verity-contracts`. It roughly doubled the suites above and found **eleven defects, all the same
+> defect** — a check that existed, was believed to run, and did not. Two were security-relevant: a
+> verdict that called an out-of-date TDX platform trustworthy, and a Python implementation honouring
+> an authorization TypeScript refused. Recorded in
+> [`records/experiments/2026-08-04-checks-that-did-not-run.md`](records/experiments/2026-08-04-checks-that-did-not-run.md);
+> that record's per-repo trap table is the part worth reading before touching any of these repos.
+>
+> Four decisions were taken during implementation and are recorded as ADRs rather than left in commit
+> messages: [0021](docs/decisions/0021-app-manifest-deployment-is-unmediated.md),
 > [0022](docs/decisions/0022-economic-terms-are-signed-not-read-late.md),
 > [0023](docs/decisions/0023-licences-are-per-unit.md) and
 > [0024](docs/decisions/0024-instance-binding-is-on-chain.md). The last two changed the entitlement
@@ -24,6 +33,10 @@
 >
 > Contracts are deployed on Ethereum Sepolia and ADR 0024's guard has been checked against a live
 > chain — see [the deployment record](records/experiments/2026-07-30-first-testnet-deployment.md).
+> The verifier's refusal has been checked against real TDX — see
+> [L-04](records/experiments/2026-07-31-l04-verifier-refuses-on-mismatch.md).
+>
+> **The architecture as built is drawn in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).**
 
 **Date:** 2026-07-27
 **Phase:** 2 of Research → Plan → Annotate → Implement
@@ -320,16 +333,24 @@ Mark items complete here as they land — this document is the progress tracker.
 
 ### Phase 1a — verifier (15) — **filed**
 - [x] [ithaka-dev/verity-verifier#1–15](https://github.com/ithaka-dev/verity-verifier/issues) · 5 tagged `invariant`
-- [ ] Start with V-01, V-02 (fixtures are real quotes in `records/experiments/artifacts/`)
-- [ ] **V-10 must not be frozen before reading [ADR 0014](docs/decisions/0014-verifier-update-discipline.md)** — the verdict type is richer than a boolean
+- [x] V-01…V-15 implemented. Fixtures are the real quote and compose in `records/experiments/artifacts/`
+- [x] **V-10 built after ADR 0014**: `Verdict` reports every check individually, never a bare boolean
+- [x] Hardened 2026-08-04 — `compose.rs` 38%→96%, wasm bindings 22%→90%, mutation harness at 14/14 in CI
+- [x] **Defect found and fixed:** `TcbStatus` was outside `Check::essential()`, so a genuine quote from a platform with a known-vulnerable TCB returned `is_trustworthy() == true`
 
 ### Phase 1b — contracts (13) — **filed**
 - [x] [ithaka-dev/verity-contracts#1–13](https://github.com/ithaka-dev/verity-contracts/issues)
-- [ ] **C-02 is issue #1 and goes first** — build the signature dispatch helper before anything verifies a signature
+- [x] **C-02 went first** — `SignatureChecker` exists and a CI gate asserts no raw `ecrecover` anywhere
+- [x] C-01…C-13 implemented; deployed to Ethereum Sepolia 2026-07-30
+- [x] Hardened 2026-08-04 — 100% lines/statements/branches/functions, mutation 15/15 in CI
+- [x] **Flake found and fixed:** the invariant suite failed ~1 run in 12; two handler actions returned silently when a precondition was unmet
 
 ### Phase 2 — template (13) — **filed** · tool (1) deferred
 - [x] [ithaka-dev/verity-app-template#1–13](https://github.com/ithaka-dev/verity-app-template/issues) · all tagged `unpatchable`
-- [ ] T-14 (the MVP tool) waits on `verity-tool-<name>`, deferred by [ADR 0013](docs/decisions/0013-create-sibling-repos.md) until its name is chosen
+- [x] T-01…T-13 implemented, both languages
+- [x] Hardened 2026-08-04 — Python 79%→93%; behavioural parity table added on top of the value vectors
+- [x] **Drift found and fixed:** Python had no maximum-lifetime check while TypeScript did, so it honoured an authorization valid until the year 2100
+- [ ] T-14 (the MVP tool) waits on `verity-tool-pandoc` ([ADR 0020](docs/decisions/0020-mvp-tool-is-pandoc.md)) — **the only thing standing between here and a loop that runs end to end**
 
 ### Phase 3a — payments (7) · 3b — orchestrator (12) — **filed**
 - [x] [ithaka-dev/verity-payments#1–7](https://github.com/ithaka-dev/verity-payments/issues) · all tagged `throwaway`
@@ -341,21 +362,51 @@ Mark items complete here as they land — this document is the progress tracker.
 ### Phase 6 — UI (8) — deferred
 - [ ] Waits on `verity-ui`, deferred by [ADR 0013](docs/decisions/0013-create-sibling-repos.md) while [RFC ui-scope](records/rfcs/2026-07-25-ui-scope.md) has open questions
 
-### Archive
-- [ ] Move `research.md` + `plan.md` to `records/plans/` when the work concludes, per CLAUDE.md
-
 ---
 
 ## Status
 
-**Phase 0 complete.** Five repos created, seeded, and public. 76 issues filed; the remaining 13
-wait on repos deliberately deferred by [ADR 0013](docs/decisions/0013-create-sibling-repos.md).
+**Phases 0–3 and 5 are built. Phase 4 has run once, against real hardware.**
 
-**Phases 1a and 1b can start in parallel.** Neither blocks the other.
+L-04 proved the property the project exists for: the verifier accepted a genuine deployment and
+refused a one-byte change to the licensed compose hash, on real TDX, on dstack 0.5.7. That is
+`licensed_composeHash == attested_composeHash`, demonstrated rather than argued.
 
-Two things to carry into implementation:
+Everything below is what stands between that and a system somebody could use.
 
-- **`verity-contracts` C-02 first.** The signature dispatch helper before anything that verifies a
-  signature. Build it later and something has already reintroduced a raw `ecrecover`.
-- **`verity-verifier` V-10 after ADR 0014.** It is the surface every agent embeds, and it freezes on
-  first adoption.
+### What blocks the loop closing
+
+1. **There is no published tool.** `verity-tool-pandoc` does not exist, so nothing has ever been
+   licensed, deployed, verified and *used* end to end with a real product at the far end. This is
+   the single highest-value item on the plan.
+2. **L-01, L-02, L-03 and L-05 have never run.** L-01 and L-05 need a registry push; L-02 and L-03
+   need TDX capacity, which exists.
+3. **The orchestrator has never run against a real deployment.** It is well tested against fakes,
+   which is not the same claim.
+4. **Nothing is deployed.** `nix flake check` passes; no machine has been built from it.
+
+### What is deliberately not being done
+
+- **Account abstraction**, and therefore any spend envelope. ADR 0002 defers it under three binding
+  conditions — testnet only, AA is a hard gate on real value, and the EIP-3009 path is throwaway.
+  **There must be no pretense of a limit in the meantime**: a check the agent can edit manufactures
+  confidence no boundary justifies.
+- **Phase 6 (UI)**, while [RFC ui-scope](records/rfcs/2026-07-25-ui-scope.md) has open questions.
+- **Discovery (§4.6)**, unbuilt and unscheduled.
+
+### Carried forward from the hardening pass
+
+- **T-18 is unfinished.** Coverage floors exist only in `verity-contracts`. Without them a number
+  that took three days to raise can slide back quietly — which is this plan's own thesis applied to
+  itself.
+- **Read the trap table** in
+  [`records/experiments/2026-08-04-checks-that-did-not-run.md`](records/experiments/2026-08-04-checks-that-did-not-run.md)
+  before touching any of these repos. It holds the operational traps you only learn by building;
+  `Repo.trap` in the wayfinder currently holds only the ones drawn from ADRs.
+- **A gate is only trustworthy once it has been seen to fail.** Four gates in this project were
+  green while doing nothing, and three of those were reported as passing before being caught.
+
+### Archive
+
+This document moves to `records/plans/` when the work concludes, per CLAUDE.md. It has not
+concluded: Phase 4 is partly run and Phase 6 is deferred, so this stays the working tracker.
