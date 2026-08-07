@@ -3,6 +3,13 @@
 **Status:** one service written (`wayfinder`). MCP and HTTP transports are not yet wired — the
 handlers exist and are tested; the adapters over them are not written.
 
+**Before wiring them, read
+[`records/experiments/2026-08-04-checks-that-did-not-run.md`](../records/experiments/2026-08-04-checks-that-did-not-run.md).**
+Its "operational traps, per repo" table is knowledge this service is shaped to answer with, and it
+has no other home: `Repo.trap` currently carries traps drawn from the ADRs, which are the ones a
+reader could find anyway. The ones worth serving are the ones you only learn by building, and until
+that pass there were none recorded.
+
 Small Rust services that help agents navigate Project Verity. Each speaks **MCP** (for agent
 tool-use) and **HTTP/JSON** (for CI, scripts, and any future A2A integration) over the same
 handlers. Decided in [ADR 0001](../docs/decisions/0001-control-center-stack.md).
