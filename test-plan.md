@@ -156,7 +156,7 @@ project measured them it discovered the suite caught 2 defects in 12 while looki
 Appended as work lands, per the write-once convention: this section records what happened, and
 corrections go below rather than over.
 
-**Done:** T-01–T-17, T-19. T-18 for `verity-contracts` only.
+**Done:** T-01–T-19. All nineteen.
 
 | Repo | Then | Now |
 |---|---|---|
@@ -224,8 +224,36 @@ run, and did not.
    Swapping `signature()` and `claimed_signer()` leaves all eleven pre-existing tests green while
    every relay sends an address where a signature belongs. Demonstrated, not argued.
 
-### Still open
+### T-18, completed 2026-08-08
 
-T-15 is done; T-18 remains for every repo but `verity-contracts`. `verity-payments` and the
-template have no coverage floors, and the two Rust crates have none either — which is the gap that
-lets a number slide back down quietly.
+Every repo now has a coverage floor in CI, set just below current so a regression trips it rather
+than an honest commit having to argue with the gate. **Floors ratchet up, never down.**
+
+| Repo | Floor | Mechanism |
+|---|---|---|
+| `verity-contracts` | 100% lines / statements / branches / functions | `script/check-coverage.py` |
+| `verity-verifier` | lines 89 · functions 88 · **per-file 60** | `cargo llvm-cov --fail-under-*` |
+| `verity-orchestrator` | lines 96 · functions 96 · **per-file 90** | `cargo llvm-cov --fail-under-*` |
+| `services/wayfinder` | lines 97 · functions 90 · **per-file 95** | `cargo llvm-cov --fail-under-*` |
+| `verity-app-template` (Py) | 91% | `pytest --cov-fail-under` |
+| `verity-app-template` (TS) | lines 97 · branches 93 · functions 95 | `scripts/check-coverage-floor.mjs` |
+| `verity-payments` | lines 97 · branches 92 · functions 91 | `script/check-coverage-floor.mjs` |
+
+Three things worth carrying forward.
+
+**Coverage was not measured in CI at all** for the two Rust crates or the wayfinder — every number
+quoted for them came from a laptop. The floor was the second problem; the first was that nothing
+was looking.
+
+**The per-file floor is not redundant with the total,** and is the more valuable of the two. A total
+hides the failure this project has already had — a module going dark while the average stays
+healthy — and it stops a new module arriving with no tests at all. The verifier's is deliberately
+low: `attest.rs` sits at 63% because `Attested`'s accessors are reachable only through a call
+needing live Intel collateral, which is correct design rather than a gap.
+
+**A floor and a presence check are different questions.** A percentage cannot see a module that is
+absent from the report, and the percentage above it is computed without it. Both run in the
+TypeScript repos.
+
+Every floor was verified by raising it above current and watching the gate go red, and the
+TypeScript one also on empty input — a dead test run must not pass.

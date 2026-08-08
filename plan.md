@@ -16,8 +16,7 @@
 > | 6 UI | 8 | deferred | — |
 >
 > **A test-hardening pass ran 2026-08-02 → 08-04** against
-> [`test-plan.md`](test-plan.md): T-01 through T-17 and T-19 landed, T-18 only in
-> `verity-contracts`. It roughly doubled the suites above and found **eleven defects, all the same
+> [`test-plan.md`](test-plan.md): all nineteen landed, T-18 last, on 2026-08-08. It roughly doubled the suites above and found **eleven defects, all the same
 > defect** — a check that existed, was believed to run, and did not. Two were security-relevant: a
 > verdict that called an out-of-date TDX platform trustworthy, and a Python implementation honouring
 > an authorization TypeScript refused. Recorded in
@@ -396,9 +395,8 @@ Everything below is what stands between that and a system somebody could use.
 
 ### Carried forward from the hardening pass
 
-- **T-18 is unfinished.** Coverage floors exist only in `verity-contracts`. Without them a number
-  that took three days to raise can slide back quietly — which is this plan's own thesis applied to
-  itself.
+- **T-18 is done.** Every repo has a coverage floor in CI, and for the three Rust crates coverage
+  is now *measured* in CI at all, which it was not. Floors ratchet up, never down.
 - **Read the trap table** in
   [`records/experiments/2026-08-04-checks-that-did-not-run.md`](records/experiments/2026-08-04-checks-that-did-not-run.md)
   before touching any of these repos. It holds the operational traps you only learn by building;

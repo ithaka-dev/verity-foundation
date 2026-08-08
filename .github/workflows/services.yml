@@ -35,6 +35,34 @@ jobs:
       - run: cargo clippy --all-targets --all-features -- -D warnings
       - run: cargo test --all-features
 
+  # T-18. Floors just below current, so a regression trips them. **Raise them as coverage improves;
+  # never lower one to make a build pass** — a change that justifies a lower floor should argue for
+  # it in the commit message, where a reviewer sees it.
+  #
+  # `--fail-under-file-lines` is not redundant with the total: a total hides a module going dark
+  # while the average stays healthy, and it means a new module cannot arrive untested. That matters
+  # more than usual here, because this crate's whole content is a map that has to stay accurate.
+  wayfinder-coverage:
+    name: wayfinder · coverage floors
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/wayfinder
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: llvm-tools-preview
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: services/wayfinder
+      - uses: taiki-e/install-action@cargo-llvm-cov
+      - run: |
+          cargo llvm-cov --all-features --summary-only \
+            --fail-under-lines 97 \
+            --fail-under-functions 90 \
+            --fail-under-file-lines 95
+
   # C1: this service navigates the project and must never join the licence, attestation or payment
   # path. That boundary is one dependency away from gone — adding an RPC client or a signing crate
   # here would be the first step, and it would look like a convenience.
