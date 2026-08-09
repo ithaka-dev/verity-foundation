@@ -37,11 +37,12 @@ must be updated to point at it. Silence is how decisions get relitigated by acci
 | [0013](0013-create-sibling-repos.md) | Create the sibling repositories now | accepted |
 | [0014](0014-verifier-update-discipline.md) | Verifier update discipline | accepted |
 | [0015](0015-adopt-sops-nix.md) | Adopt sops-nix for operator secrets | accepted |
-| [0016](0016-adopt-chainsafe-handbook.md) | Adopt the ChainSafe Engineering Handbook | accepted |
+| [0016](0016-adopt-chainsafe-handbook.md) | Adopt the ChainSafe Engineering Handbook | superseded by 0021 |
 | [0017](0017-agpl-for-all-verity-repositories.md) | AGPL-3.0 for all Verity repositories | accepted |
 | [0018](0018-reviewer-signoff-is-a-gate.md) | Reviewer sign-off is a gate | accepted |
 | [0019](0019-defer-oneflow-until-first-release.md) | Pause OneFlow until further notice (paused, not cancelled) | accepted |
 | [0020](0020-mvp-tool-is-pandoc.md) | The MVP tool wraps Pandoc | accepted |
+| [0021](0025-vendor-engineering-practice-locally.md) | Engineering practice is vendored locally | accepted |
 
 Add a row when you add an ADR.
 

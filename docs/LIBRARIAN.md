@@ -21,6 +21,36 @@ someone else would have to search for.
 | Why did we do X back in <month>? | [`../records/`](../records/) |
 | What went wrong on <date>? | [`../records/incidents/`](../records/incidents/) |
 
+## Engineering practice
+
+Authoritative for *how* we build, per [ADR 0025](decisions/0025-vendor-engineering-practice-locally.md).
+These are **local** skills, each paired with an agent of the same name — the skill is the
+methodology, the agent is a delegate that applies it. Consult the one for the language **before**
+the work, not after. Where they and Verity's spec or ADRs disagree, **ours win**.
+
+| Domain | Skill / agent | Applies to |
+|---|---|---|
+| Rust | `rust-architect` · `rust-developer` · `rust-reviewer` | Verifier, orchestrator. `unsafe` is HARD FAIL scrutiny |
+| Solidity | `solidity-architect` · `solidity-developer` · `solidity-reviewer` | Contracts. Reentrancy, upgrade safety, audit-readiness are HARD FAIL |
+| EVM protocol architecture | `web3-architect` · `web3-architecture` | Contract-system design and threat modelling; produces an ADR |
+| Review framework | `pr-review` | Language-agnostic. Load alongside the language reviewer |
+| TypeScript | `typescript-architect` · `typescript-developer` · `typescript-reviewer` | Payments, template. See the severity note below |
+| Python | `python-architect` · `python-developer` · `python-reviewer` | Template. See the severity note below |
+
+All four languages in [ADR 0012](decisions/0012-language-allocation.md) are now covered, closing the
+gap [ADR 0025](decisions/0025-vendor-engineering-practice-locally.md) recorded at the time it was
+written.
+
+**Severity is not uniform, and ours wins.** `solidity-reviewer` is HARD FAIL tier and refuses
+sign-off on an unresolved finding; `typescript-reviewer` and `python-reviewer` default to SOFT
+WARNING, and the TypeScript one states outright that the agent never blocks. That default does
+**not** relax [ADR 0018](decisions/0018-reviewer-signoff-is-a-gate.md) — reviewer sign-off is a gate
+here regardless of what a skill's own severity model says, per the precedence rule in
+[ADR 0025](decisions/0025-vendor-engineering-practice-locally.md). A review that reports findings
+and waves the change through has not discharged 0018.
+
+Gates, HARD FAIL rules and the precedence rule are restated in [`../CLAUDE.md`](../CLAUDE.md) §3.
+
 ## External references
 
 Pinned versions and authoritative sources for the stack in spec §9. Add a row when you rely on
@@ -28,14 +58,7 @@ an external document; note the version you relied on, because these move.
 
 | Topic | Reference | Notes |
 |---|---|---|
-| **Engineering practice — authoritative** | [handbook.chainsafe.io/llms.txt](https://handbook.chainsafe.io/llms.txt) | Adopted by [ADR 0016](decisions/0016-adopt-chainsafe-handbook.md). Consult **before** substantive work, not after. Where it and Verity's spec disagree, the spec wins — the handbook governs *how we build*, the spec governs *what must be true*. |
-| ↳ OneFlow branching | [`workflows/oneflow.md`](https://raw.githubusercontent.com/ChainSafe/engineering-handbook/main/workflows/oneflow.md) | `<handle>/<feature>` branches, PR to `main`, tags drive deploys |
-| ↳ Gates and escalation | [`operating-model/gates-and-escalation.md`](https://raw.githubusercontent.com/ChainSafe/engineering-handbook/main/operating-model/gates-and-escalation.md) | Nine gate categories. Checkpoints, not refusals |
-| ↳ Rust | [developer](https://raw.githubusercontent.com/ChainSafe/engineering-handbook/main/languages/rust/developer.md) · [reviewer](https://raw.githubusercontent.com/ChainSafe/engineering-handbook/main/languages/rust/reviewer.md) · [gotchas](https://raw.githubusercontent.com/ChainSafe/engineering-handbook/main/languages/rust/gotchas.md) | Verifier, orchestrator. `unsafe` is HARD FAIL scrutiny |
-| ↳ Solidity | [developer](https://raw.githubusercontent.com/ChainSafe/engineering-handbook/main/languages/solidity/developer.md) · [reviewer](https://raw.githubusercontent.com/ChainSafe/engineering-handbook/main/languages/solidity/reviewer.md) · [gotchas](https://raw.githubusercontent.com/ChainSafe/engineering-handbook/main/languages/solidity/gotchas.md) | Contracts. Reentrancy, upgrade safety, audit-readiness are HARD FAIL |
-| ↳ TypeScript | [developer](https://raw.githubusercontent.com/ChainSafe/engineering-handbook/main/languages/typescript/developer.md) · [reviewer](https://raw.githubusercontent.com/ChainSafe/engineering-handbook/main/languages/typescript/reviewer.md) | Payments, template |
-| ↳ Python | [developer](https://raw.githubusercontent.com/ChainSafe/engineering-handbook/main/languages/python/developer.md) · [reviewer](https://raw.githubusercontent.com/ChainSafe/engineering-handbook/main/languages/python/reviewer.md) | Template |
-| ↳ Skills | [`skills/`](https://github.com/ChainSafe/engineering-handbook/tree/main/skills) | `chainsafe-rust-developer`, `chainsafe-solidity-reviewer`, `chainsafe-research-plan-implement`, and others |
+| Engineering practice — **origin only** | [handbook.chainsafe.io/llms.txt](https://handbook.chainsafe.io/llms.txt) | Where our practice came from — adopted by [ADR 0016](decisions/0016-adopt-chainsafe-handbook.md), since vendored locally by [ADR 0025](decisions/0025-vendor-engineering-practice-locally.md). **Attribution, not a live reference:** the authoritative copy is the local skills above. Re-read deliberately only if our guidance is suspected stale. |
 | Phala dStack | https://docs.phala.network/ | Pin ≥ 0.5.6 (post attestation-pipeline hardening, spec §2.5). Local simulator: `phala simulator start`. |
 | Intel TDX attestation | Intel DCAP / `dcap-qvl` | Quote verification on the agent side, spec §4.5. |
 | x402 | https://x402.org/ | Base-native. The 402-gated resource is the mint authorization, spec §4.2. |

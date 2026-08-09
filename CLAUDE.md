@@ -267,12 +267,19 @@ Recorded in [`docs/decisions/0001-control-center-stack.md`](docs/decisions/0001-
 - Server changes, incidents, and agentic-loop experiments all get a dated entry. An unrecorded
   production change is a defect.
 
-**Engineering practice — [ADR 0016](docs/decisions/0016-adopt-chainsafe-handbook.md)**
-- The [ChainSafe Engineering Handbook](https://handbook.chainsafe.io/llms.txt) is authoritative for
-  *how* we build, across every Verity repo. Consult the relevant section **before** the work, not
-  after. It covers all four of our languages, and its skills are preferred over ad-hoc equivalents.
-- **Where the handbook and Verity's spec/ADRs disagree, ours win.** The handbook cannot know our
-  product invariants. It governs how we build; the spec governs what must be true.
+**Engineering practice — [ADR 0025](docs/decisions/0025-vendor-engineering-practice-locally.md)**
+- The **local skills** are authoritative for *how* we build, across every Verity repo:
+  `rust-*`, `solidity-*`, `typescript-*` and `python-*` (each with `-architect` / `-developer` /
+  `-reviewer`), plus `pr-review` — all four languages of [ADR 0012](docs/decisions/0012-language-allocation.md).
+  Each is paired with an agent of the same name — the skill is the methodology, the agent is a
+  delegate that applies it. Consult the one for your language **before** the work, not after; prefer
+  them over ad-hoc equivalents. Full map in [`docs/LIBRARIAN.md`](docs/LIBRARIAN.md).
+- **A skill's own severity model never relaxes ADR 0018.** `typescript-reviewer` and
+  `python-reviewer` default to SOFT WARNING, and the TypeScript one says the agent never blocks;
+  `solidity-reviewer` is HARD FAIL tier. Sign-off is a gate here either way — the precedence rule
+  means our ADRs win over vendored guidance.
+- **Where practice guidance and Verity's spec/ADRs disagree, ours win.** The guidance cannot know
+  our product invariants. It governs how we build; the spec governs what must be true.
 - **OneFlow branching is PAUSED until further notice**
   ([ADR 0019](docs/decisions/0019-defer-oneflow-until-first-release.md)) — commit directly to
   `main`, no PRs. Paused, not cancelled: it returns intact on explicit notice. **Review is not
@@ -284,7 +291,7 @@ Recorded in [`docs/decisions/0001-control-center-stack.md`](docs/decisions/0001-
 - **HARD FAIL scrutiny** on Solidity security (reentrancy, upgrade safety, audit-readiness) and
   Rust `unsafe`: an explicit logged override is required even with approval.
 - **Reviewer sign-off is a gate** ([ADR 0018](docs/decisions/0018-reviewer-signoff-is-a-gate.md)).
-  Per issue, not per phase: implement → review under the handbook's reviewer guidance for that
+  Per issue, not per phase: implement → review under the `*-reviewer` skill for that
   language → green light → merge. Nothing advances on the author's own judgement that it is fine.
   `verity-app-template` gets two reviews, TypeScript and Python, because divergence is its risk.
 - **Everything is AGPL-3.0-only** ([ADR 0017](docs/decisions/0017-agpl-for-all-verity-repositories.md)),

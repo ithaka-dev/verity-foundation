@@ -1,6 +1,6 @@
 # 0016. Adopt the ChainSafe Engineering Handbook
 
-**Status:** accepted
+**Status:** superseded by [0025-vendor-engineering-practice-locally.md](0025-vendor-engineering-practice-locally.md)
 **Date:** 2026-07-28
 **Supersedes:** —
 **Relates to:** [ADR 0001](0001-control-center-stack.md), [ADR 0012](0012-language-allocation.md);
