@@ -75,7 +75,7 @@ Developers publish from their own Docker-compatible registries. They sell the se
 ### 2.6 Ownership model: durable long-running instances, state as the primitive ⟳
 The durable thing is the **state lineage + genome**, not the running process. Instances can go cold and reconstitute via dStack KMS-derived deterministic keys + encrypted persistent storage. Fire-and-forget is the degenerate case (spawn, act, discard snapshot) of the general case (spawn, act, keep it). Build the general case.
 
-**State continuity follows `app_id`, not the configuration hash** — measured on real TDX, dstack 0.5.7 (ADR 0008), for both the encrypted disk *and* keys an app derives itself via the guest agent's `DeriveKey`. A derived key was byte-identical across an in-place update that changed `compose_hash`, and the app decrypted data it had sealed before the change. dStack's upgrade path is **in place**: it preserves `app_id`, `instance_id` and the encrypted volume, so state carries across a version change with no migration call. A *fresh deploy* receives a new `app_id` and therefore no access to prior state.
+**State continuity follows `app_id`, not the configuration hash** — measured on real TDX, dstack 0.5.7 (ADR 0008) and **re-verified on 0.5.9** on 2026-08-08, for both the encrypted disk *and* keys an app derives itself via the guest agent's `DeriveKey`. Keys also survive a restart, which nothing had tested before. A derived key was byte-identical across an in-place update that changed `compose_hash`, and the app decrypted data it had sealed before the change. dStack's upgrade path is **in place**: it preserves `app_id`, `instance_id` and the encrypted volume, so state carries across a version change with no migration call. A *fresh deploy* receives a new `app_id` and therefore no access to prior state.
 
 **This makes `app_id` the identity a license must bind its instance to**, since it is what governs state access. It also means an upgrade performed as a fresh deployment silently destroys the holder's state while producing a working instance and a valid attestation — see §4.3.
 
@@ -214,7 +214,7 @@ Payment edge: `agent → license` over x402 (USDC); the 402-gated resource is th
 - Docker Compose native; deploy as-is, no code porting (see §4.7 for the one qualification)
 - attestation binds the whole compose configuration, not the image alone — **the expected values come from the published `app-compose.json`**, fetched and checked against the `composeHash` committed on chain. Never from the orchestrator's own response: it is the party being verified
 - KMS releases per-app keys only after attestation verifies → use for the app's encrypted persistent state
-- pin dstack version ≥ 0.5.6 (post attestation-pipeline hardening). **Measured against 0.5.7**; Phala Cloud nodes ran 0.5.7 at time of writing while images to 0.5.10 were listed
+- pin dstack version ≥ 0.5.6 (post attestation-pipeline hardening). Attestation structure **measured against 0.5.7**, which Phala **no longer offers** — 0.5.8 and 0.5.9 are current as of 2026-08-08. State continuity was **re-verified on 0.5.9** ([record](../records/experiments/2026-08-08-l02-l03-continuity-on-dstack-059.md)); the *attestation* measurements below have not been re-taken on it
 - verification on the agent side via `dstack-verifier` / `dcap-qvl`
 
 **Measured measurement structure** (dstack 0.5.7). RTMR3 accumulates named events:

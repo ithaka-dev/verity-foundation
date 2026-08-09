@@ -1,6 +1,6 @@
 # Architecture
 
-**Status:** active — describes the system as built on 2026-08-04.
+**Status:** active — describes the system as built on 2026-08-08.
 **Scope:** how the parts fit together and where the trust boundary runs. The system-level *rationale*
 lives in [`Verity-spec.md`](Verity-spec.md) §3–§4; the per-component detail belongs in
 [`architecture/components/`](architecture/components/) as those documents get written.
@@ -274,7 +274,7 @@ until somebody looks, and nobody looks.
 | Session-key policy (ERC-4337) | §4.1, §2.7 | `verity-contracts` | Solidity | deferred — ADR 0002 | — |
 | x402 → mint authorization | §4.2 | `verity-payments` | TypeScript | built, **designated throwaway** | not yet written |
 | Orchestrator | §4.3, §2.8 | `verity-orchestrator` | Rust | built, not deployed | not yet written |
-| Confidential execution | §4.4 | — (dStack 0.5.7) | — | **verified on real TDX** | not yet written |
+| Confidential execution | §4.4 | — (dStack **0.5.9**) | — | **verified on real TDX**; continuity re-verified 2026-08-08 | not yet written |
 | Agent-side verifier | §4.5 | `verity-verifier` | Rust + WASM | built, refusal proven live | not yet written |
 | App lifecycle contract | §5 | `verity-app-template` | TS + Python | built | not yet written |
 | Discovery (llms.txt / IPFS) | §4.6 | — | — | **not built** | — |
@@ -302,8 +302,14 @@ Stated because a diagram that omits its own gaps invites someone to plan against
   binding conditions, the first being testnet only. There must be no pretense of a limit in the
   meantime: a check the agent can edit is worse than none.
 - **No deployed infrastructure.** `nix flake check` passes; no machine has been built from it.
-- **The orchestrator has never run against a real deployment.** L-02, L-03 and L-05 are written and
-  unexecuted.
+- **The orchestrator has never run against a real deployment.** This is now the largest untested
+  path in the system. It is the component that chooses upgrade-versus-deploy, and `phala deploy`
+  creates a *new* CVM without `--cvm-id` while updating in place with it — so ADR 0008's silent data
+  loss is one missing argument on the same command.
+- **L-01 and L-05 have never run.** Both need a registry push, which is a Tier 1 secret and
+  therefore a human's to run (C5).
+- **Only dstack 0.5.9 has been verified.** 0.5.8 is offered and unexamined, and **0.5.7 — the
+  version ADR 0008, ADR 0009 and L-04 were all measured on — is no longer offered at all.**
 
 ## Invariants
 
