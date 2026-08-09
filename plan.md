@@ -11,7 +11,7 @@
 > | 2 template | 13 | done | 141 TS + 110 Py (was 79 + 58) |
 > | 3a payments | 7 | done — P-07 needs a human to run it | 26 (was 11) |
 > | 3b orchestrator | 12 | done | 42 (was 15) |
-> | 4 closed loop | 5 | **L-04 run and passed**; L-01/02/03/05 written, never run | — |
+> | 4 closed loop | 5 | **L-02, L-03, L-04 run and passed**; L-01/L-05 need a registry push (C5) | — |
 > | 5 infrastructure | 11 | done — `nix flake check` passes; never deployed to a machine | — |
 > | 6 UI | 8 | deferred | — |
 >
@@ -378,8 +378,8 @@ Everything below is what stands between that and a system somebody could use.
 1. **There is no published tool.** `verity-tool-pandoc` does not exist, so nothing has ever been
    licensed, deployed, verified and *used* end to end with a real product at the far end. This is
    the single highest-value item on the plan.
-2. **L-01, L-02, L-03 and L-05 have never run.** L-01 and L-05 need a registry push; L-02 and L-03
-   need TDX capacity, which exists.
+2. **L-01 and L-05 have never run**, and both need a registry push — a Tier 1 secret, so a human's
+   to run (C5). L-02 and L-03 ran on 2026-08-08 against dstack 0.5.9 and passed.
 3. **The orchestrator has never run against a real deployment.** It is well tested against fakes,
    which is not the same claim.
 4. **Nothing is deployed.** `nix flake check` passes; no machine has been built from it.

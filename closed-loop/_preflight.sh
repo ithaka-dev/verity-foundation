@@ -53,8 +53,8 @@ printf 'preflight ok: phala CLI %s, authenticated, CVM %s reachable\n' \
 
 # The most recent value of a probe field, or empty.
 probe_field() {
-  local field="$1" lines="${2:-200}"
-  phala logs "$VERITY_CVM_ID" --tail "$lines" 2>/dev/null \
+  local field="$1" lines="${2:-2000}"
+  phala logs --cvm-id "$VERITY_CVM_ID" --tail "$lines" 2>/dev/null \
     | grep -oE "SDKTEST .*${field}=[^ ]*" \
     | tail -1 \
     | sed -nE "s/.*${field}=([^ ]*).*/\1/p"
@@ -72,7 +72,7 @@ require_probe() {
   if [ -z "$value" ]; then
     printf 'FAILED: the probe never reported %s.\n' "$field" >&2
     printf '        Nothing was measured, so nothing is proven. Recent logs:\n' >&2
-    phala logs "$VERITY_CVM_ID" --tail 20 >&2 2>/dev/null || true
+    phala logs --cvm-id "$VERITY_CVM_ID" --tail 20 >&2 2>/dev/null || true
     exit 1
   fi
   printf '%s' "$value"
@@ -82,8 +82,12 @@ require_probe() {
 # either wastes time or races, and a race here looks like a key that changed — which is the failure
 # these runs exist to detect, reported for the wrong reason.
 await_probe() {
-  local field="$1" timeout="${2:-300}" deadline=$((SECONDS + timeout))
-  until [ -n "$(probe_field "$field" 40)" ]; do
+  # Separate `local` statements: within a single one, `deadline` would reference `timeout` before
+  # it is bound, which `set -u` rejects.
+  local field="$1"
+  local timeout="${2:-300}"
+  local deadline=$((SECONDS + timeout))
+  until [ -n "$(probe_field "$field" 400)" ]; do
     [ $SECONDS -lt $deadline ] \
       || { echo "FAILED: the probe did not report $field within ${timeout}s." >&2; exit 1; }
     sleep 10

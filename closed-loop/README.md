@@ -1,6 +1,8 @@
 # closed-loop/
 
-**Status:** L-04 has run and passed (2026-07-31). The rest are written and never executed. The contracts they run against *are* deployed —
+**Status:** L-04 (2026-07-31), **L-02 and L-03 (2026-08-08, on dstack 0.5.9)** have run and passed.
+L-01 and L-05 are written and never executed — both need a registry push, which is a Tier 1 secret
+(C5) and therefore a human's to run. The contracts they run against *are* deployed —
 see [`../records/experiments/2026-07-30-first-testnet-deployment.md`](../records/experiments/2026-07-30-first-testnet-deployment.md).
 
 The end-to-end runs that prove the system works as one thing rather than as six that each pass their
@@ -62,8 +64,8 @@ archive; this is the apparatus.
 | Script | What it proves | Why it is separate |
 |---|---|---|
 | `01-full-loop.sh` | discover → pay → mint → deploy → verify → use | The milestone. |
-| `02-continuity-restart.sh` | keys survive a kill/restart | Exercises key **stability**. |
-| `03-continuity-upgrade.sh` | `app_id` and state survive an in-place upgrade | Exercises `app_id` **preservation** — a different mechanism, so passing 02 says nothing about 03. |
+| `02-continuity-restart.sh` | keys survive a kill/restart | Exercises key **stability**. **Run 2026-08-08.** |
+| `03-continuity-upgrade.sh` | `app_id` and state survive an in-place upgrade | Exercises `app_id` **preservation** — a different mechanism, so passing 02 says nothing about 03. **Run 2026-08-08 on dstack 0.5.9**, which is the re-verification ADR 0008 requires after a version bump. |
 | `04-refuses-on-mismatch.sh` | an agent refuses a deliberately broken compose | I1. The one that proves the guarantee is real rather than merely configured. **Run 2026-07-31, both directions.** |
 | `05-publishing-refuses-tags.sh` | the publishing path resolves tags to digests and refuses a tag | I8, ADR 0007. |
 
