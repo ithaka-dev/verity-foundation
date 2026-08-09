@@ -15,7 +15,7 @@ invariants — do not silently reopen either. Flag disagreement explicitly inste
 > [ADR 0009](docs/decisions/0009-verification-model.md), and
 > [RFC license-attestation-binding](records/rfcs/2026-07-25-license-attestation-binding.md).**
 > **The verifier parses the raw TDX quote from the RA-TLS leaf certificate** and compares
-> `MR-CONFIG-ID` against `0x01 ‖ licensed_composeHash ‖ 0x00×15` (V1 on dstack 0.5.7 and 0.5.9 — *branch on
+> `MR-CONFIG-ID` against `0x01 ‖ licensed_composeHash ‖ 0x00×15` (V1 on node runtime 0.5.7, guest images 0.5.7 and 0.5.9 — *branch on
 > the prefix byte, never assume it*). **Never treat a cloud provider's parsed `tcb_info` as the
 > source of truth:** that trusts the provider's rendering of the hardware's statement, where the
 > raw quote trusts Intel's signature over the statement itself.
@@ -137,12 +137,17 @@ Consequences: `AppManifest` may **burn and mint atomically**; there is **no two-
 the volume carries over by itself, so most apps need nothing. Do **not** build
 completion-attestation signing, an app-side signing key, or permissionless burn submission.
 
-Measured on dstack 0.5.7, and **re-verified on 0.5.9** on 2026-08-08 by `closed-loop/03-continuity-upgrade.sh`
+Measured on dstack 0.5.7, and **re-verified on 2026-08-08** by `closed-loop/03-continuity-upgrade.sh` with guest image `dstack-0.5.9`
+**on nodes still running v0.5.7**
 ([record](records/experiments/2026-08-08-l02-l03-continuity-on-dstack-059.md)): `app_id` preserved,
 SDK-derived keys did not rotate with `compose_hash`, and the new version read what the old one sealed.
 Keys also survive a restart, which nothing had tested before.
 
-**0.5.7 is no longer offered** — Phala lists 0.5.8 and 0.5.9. **Re-verify on any further version bump**;
+**Name what a version versions.** The node runtime (`phala nodes list` — v0.5.7 here), the guest OS
+image (`phala os-images` — 0.5.8/0.5.9 offered; 0.5.7 gone), and dstack's own components (its
+`verifier` is at 0.5.11 upstream) move independently. Collapsing them is how this note briefly
+claimed a platform re-verification that had not happened —
+see [the correction](records/experiments/2026-08-08-correction-guest-image-is-not-the-node-version.md). **Re-verify on any further version bump**;
 the failure mode is silent data loss, and the harness now exists to make that a command rather than a
 project. 0.5.8 is offered and unexamined.
 

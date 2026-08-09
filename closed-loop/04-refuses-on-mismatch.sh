@@ -96,7 +96,8 @@ echo "  os image pinned at deploy: ${DSTACK_IMAGE:-dstack-0.5.9}"
 say 3 "verifying against the compose the platform actually ran — must ACCEPT"
 if ! cargo run --quiet --manifest-path "$verifier/Cargo.toml" \
      --example verify-attestation --features attest -- \
-     --attestation "$work/att.json" --compose "$work/compose.json" --image-digest "$digest"; then
+     --attestation "$work/att.json" --compose "$work/compose.json" --image-digest "$digest" \
+     --os-image "${DSTACK_IMAGE:-dstack-0.5.9}" ${BOOT_REFERENCE:+--boot-reference "$BOOT_REFERENCE"}; then
   echo "FAILED: a genuine deployment was refused." >&2
   echo "        Investigate before step 4 — a verifier that refuses everything proves nothing there." >&2
   exit 1

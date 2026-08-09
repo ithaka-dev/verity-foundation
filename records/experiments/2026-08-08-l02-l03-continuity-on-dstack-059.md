@@ -4,6 +4,7 @@
 **Platform:** Phala Cloud, workspace `verity`, `tdx.small`, **`dstack-0.5.9`**
 (`os_image_hash` `bd369a8c2f9edb2b52dad48ac8e0b32dde5f1337c423a506b48d07403a7d8033`), CLI v1.1.19
 **Status:** both passed
+**Corrected by:** [2026-08-08 correction](2026-08-08-correction-guest-image-is-not-the-node-version.md) — "0.5.9" was the *guest image*; the nodes run v0.5.7
 **Relates to:** [ADR 0008](../../docs/decisions/0008-upgrade-is-in-place.md);
 [2026-07-25](2026-07-25-tdx-measurement-and-state-continuity.md),
 [2026-07-26](2026-07-26-sdk-derived-key-continuity.md)

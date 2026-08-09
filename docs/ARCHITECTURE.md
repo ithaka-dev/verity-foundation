@@ -274,7 +274,7 @@ until somebody looks, and nobody looks.
 | Session-key policy (ERC-4337) | §4.1, §2.7 | `verity-contracts` | Solidity | deferred — ADR 0002 | — |
 | x402 → mint authorization | §4.2 | `verity-payments` | TypeScript | built, **designated throwaway** | not yet written |
 | Orchestrator | §4.3, §2.8 | `verity-orchestrator` | Rust | built, not deployed | not yet written |
-| Confidential execution | §4.4 | — (dStack **0.5.9**) | — | **verified on real TDX**; continuity re-verified 2026-08-08 | not yet written |
+| Confidential execution | §4.4 | — (nodes **v0.5.7**, guest image 0.5.9) | — | **verified on real TDX** 2026-08-08 | not yet written |
 | Agent-side verifier | §4.5 | `verity-verifier` | Rust + WASM | built, refusal proven live | not yet written |
 | App lifecycle contract | §5 | `verity-app-template` | TS + Python | built | not yet written |
 | Discovery (llms.txt / IPFS) | §4.6 | — | — | **not built** | — |
@@ -308,11 +308,17 @@ Stated because a diagram that omits its own gaps invites someone to plan against
   loss is one missing argument on the same command.
 - **L-01 and L-05 have never run.** Both need a registry push, which is a Tier 1 secret and
   therefore a human's to run (C5).
-- **Only dstack 0.5.9 has been verified** — continuity (L-02, L-03) and refusal (L-04), all on
-  2026-08-08. 0.5.8 is offered and unexamined; 0.5.7 is no longer offered at all.
-- **Check 7, `boot_measurements`, has never executed against real hardware on any version.** The
-  verifier bundles reference data for dstack 0.5.6–0.5.10, and `examples/verify-attestation.rs` has
-  no flag to supply an OS image reference — so that data's correctness is load-bearing and assumed.
+- **No newer *platform* has been verified.** L-02, L-03 and L-04 all ran on 2026-08-08 against
+  guest image `dstack-0.5.9`, but **both nodes still run v0.5.7** — the version everything was
+  originally measured on. The re-verification varied the guest image and held the platform
+  constant; see [the correction](../records/experiments/2026-08-08-correction-guest-image-is-not-the-node-version.md).
+  Node runtime, guest image and dstack's own components version independently.
+- **Check 7, `boot_measurements`, first executed on 2026-08-08** and passed, against a reference
+  captured from one CVM and matched on another
+  ([record](../records/experiments/2026-08-08-first-boot-measurement-check.md)). Note what the
+  verifier bundles: OS image *identity* (name, `os_image_hash`, revoked) and **no register values**,
+  so a boot reference is always captured, never derived. The one that exists describes guest image
+  0.5.9 on a node at v0.5.7, on one node only, and nothing gates it staying correct.
 
 ## Invariants
 
