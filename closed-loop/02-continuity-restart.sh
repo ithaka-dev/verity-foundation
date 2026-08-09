@@ -5,43 +5,78 @@
 # Exercises key **stability**: the same `app_id` re-derives the same KMS key, so the encrypted
 # volume is still readable after the process dies.
 #
-# **This is not L-03.** That one keeps `app_id` while everything about the configuration changes.
-# An implementation can pass this and fail that, and the failure mode there is silent — which is why
-# they are separate scripts rather than two assertions in one.
+# **This is not L-03**, and it is the one of the pair that has never been tested in any form. The
+# two prior experiments both exercised an in-place *update*
+# ([2026-07-25](../records/experiments/2026-07-25-tdx-measurement-and-state-continuity.md),
+# [2026-07-26](../records/experiments/2026-07-26-sdk-derived-key-continuity.md)); a restart is a
+# different event, and an implementation can survive one and not the other.
+#
+# ## Rewritten 2026-08-08, before the first run
+#
+# The original called `phala cvm exec` and `phala cvm restart`. Neither exists. It also derived the
+# key by parsing JSON that yields `undefined` on failure, so both fingerprints could hash the same
+# absent value, compare equal, and report key stability never measured.
+#
+# It now reads the probe from `fixtures/continuity-v1.yml` — the artifact from the 2026-07-26
+# experiment — through `phala logs`, which is how both prior runs were actually done. Nothing is
+# executed inside the CVM, so nothing depends on where `phala ssh` lands or where the encrypted
+# volume is mounted.
+#
+# Usage:
+#   export VERITY_CVM_ID=<uuid | app_id | instance_id | name>   # running fixtures/continuity-v1.yml
+#   ./02-continuity-restart.sh
 set -euo pipefail
 
-: "${VERITY_CVM_ID:?the running CVM}"
+cd "$(dirname "$0")"
+# shellcheck source=_preflight.sh
+. ./_preflight.sh
 
 say() { printf '\n[%s] %s\n' "$1" "$2"; }
 
-say 1 "recording the key fingerprint before"
-before="$(phala cvm exec "$VERITY_CVM_ID" -- curl -s --unix-socket /var/run/tappd.sock \
-  -X POST http://localhost/prpc/DeriveKey -d '{"path":"continuity-probe"}' \
-  | node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{
-      const k=JSON.parse(d).key;
-      // Fingerprint, never the key. public_logs defaults to true and this output is a log.
-      console.log(require("crypto").createHash("sha256")
-        .update("verity-fp|derived-key|").update(k).digest("hex").slice(0,16));
-    })')"
-echo "  $before"
+say 1 "reading the key fingerprint before"
+# A fingerprint, never the key: the probe prints sha256("fp|" ‖ key) and derives its passphrase
+# separately as sha256("enc|" ‖ key). `public_logs` defaults to true and this output is a log.
+before_fp="$(require_probe KEYFP)"
+before_app_id="$(cvm_field app_id)"
+echo "  KEYFP=$before_fp  app_id=$before_app_id"
+
+# The seal must already be readable, or step 4 proves nothing about the restart.
+before_unseal="$(require_probe UNSEAL)"
+[ "$before_unseal" = "OK" ] \
+  || { echo "FAILED: the seal was already unreadable before restarting ($before_unseal)." >&2; exit 1; }
 
 say 2 "restarting"
-phala cvm restart "$VERITY_CVM_ID"
-sleep 30
+phala cvms restart "$VERITY_CVM_ID"
 
-say 3 "recording the key fingerprint after"
-after="$(phala cvm exec "$VERITY_CVM_ID" -- curl -s --unix-socket /var/run/tappd.sock \
-  -X POST http://localhost/prpc/DeriveKey -d '{"path":"continuity-probe"}' \
-  | node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{
-      const k=JSON.parse(d).key;
-      console.log(require("crypto").createHash("sha256")
-        .update("verity-fp|derived-key|").update(k).digest("hex").slice(0,16));
-    })')"
-echo "  $after"
+say 3 "waiting for the probe to report again"
+# `--since` bounds the window so a pre-restart line cannot be mistaken for a post-restart one.
+sleep 15
+await_probe KEYFP 300
 
-if [ "$before" != "$after" ]; then
+say 4 "the derived key must be unchanged"
+after_fp="$(require_probe KEYFP)"
+echo "  KEYFP=$after_fp"
+if [ "$before_fp" != "$after_fp" ]; then
   echo "FAILED: the derived key changed across a restart. The volume is unreadable." >&2
   exit 1
 fi
+
+say 5 "and what was sealed must still open"
+# The fingerprint matching is necessary and not sufficient — this is what proves the data is
+# actually reachable, rather than that two hashes agreed.
+after_unseal="$(require_probe UNSEAL)"
+after_plain="$(require_probe PLAIN)"
+echo "  UNSEAL=$after_unseal  PLAIN=$after_plain"
+[ "$after_unseal" = "OK" ] || { echo "FAILED: the sealed payload no longer opens." >&2; exit 1; }
+[ "$after_plain" != "MISSING" ] || { echo "FAILED: the plaintext control is gone — the disk did not survive." >&2; exit 1; }
+
+say 6 "app_id must be unchanged — a restart is not a redeploy"
+after_app_id="$(cvm_field app_id)"
+if [ "$before_app_id" != "$after_app_id" ]; then
+  echo "FAILED: app_id changed across a restart. That was a redeploy, not a restart." >&2
+  exit 1
+fi
+
 echo
-echo "Key stability confirmed. This says NOTHING about upgrade — run 03."
+echo "Key stability confirmed across restart: KEYFP, seal and disk all survived."
+echo "This says NOTHING about upgrade — run 03."

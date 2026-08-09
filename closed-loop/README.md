@@ -13,6 +13,34 @@ navigation aids and may never touch the licence path (C1); `deployments/` is Nix
 A closed-loop run spans every repository, so it belongs in the control centre rather than in any one
 of them — and it needs somewhere it can be executed from.
 
+## 02 and 03 were rewritten before their first run (2026-08-08)
+
+Both were written in July against a `phala cvm ...` command surface that **does not exist**. The CLI
+uses `cvms`, has no `exec` at all, and `cvms upgrade` is deprecated in favour of `phala deploy`.
+Every command in both scripts was wrong — which is what "written and never run" buys you, and it is
+the same shape as the four CI gates that were green while doing nothing
+([record](../records/experiments/2026-08-04-checks-that-did-not-run.md)).
+
+Worse, both could **pass without observing anything**. `node -pe 'JSON.parse(…).app_id'` prints the
+string `undefined` when a field is missing or renamed; both reads would produce it, compare equal,
+and the run would report continuity it never measured. That is the silent failure L-03 exists to
+catch, reproduced inside the harness meant to catch it. `require_probe` and `cvm_field` now abort
+instead.
+
+They no longer execute anything inside the CVM. Both read a probe through `phala logs`, which is how
+the two prior continuity experiments were actually run — so nothing depends on where `phala ssh`
+lands or where the encrypted volume is mounted, neither of which should be assumed. The probe is the
+committed artifact from
+[2026-07-26](../records/experiments/artifacts/2026-07-26-sdk-derived-key/), installed here as
+`fixtures/continuity-v{1,2}.yml`.
+
+**What each of the pair is worth.** L-03's *finding* is not new — 2026-07-25 and 2026-07-26 between
+them established it, and it became [ADR 0008](../docs/decisions/0008-upgrade-is-in-place.md). What
+did not exist was a repeatable version, and ADR 0008 says to re-verify on every dstack version bump
+because the failure is silent data loss. An experiment written up in prose cannot be re-run. **L-02
+is the genuinely untested one**: both experiments exercised an in-place *update*, and a restart is a
+different event.
+
 ## Nothing here has been run
 
 Every script below needs things an agent does not have (**C5**):
