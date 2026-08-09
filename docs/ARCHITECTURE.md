@@ -308,8 +308,11 @@ Stated because a diagram that omits its own gaps invites someone to plan against
   loss is one missing argument on the same command.
 - **L-01 and L-05 have never run.** Both need a registry push, which is a Tier 1 secret and
   therefore a human's to run (C5).
-- **Only dstack 0.5.9 has been verified.** 0.5.8 is offered and unexamined, and **0.5.7 — the
-  version ADR 0008, ADR 0009 and L-04 were all measured on — is no longer offered at all.**
+- **Only dstack 0.5.9 has been verified** — continuity (L-02, L-03) and refusal (L-04), all on
+  2026-08-08. 0.5.8 is offered and unexamined; 0.5.7 is no longer offered at all.
+- **Check 7, `boot_measurements`, has never executed against real hardware on any version.** The
+  verifier bundles reference data for dstack 0.5.6–0.5.10, and `examples/verify-attestation.rs` has
+  no flag to supply an OS image reference — so that data's correctness is load-bearing and assumed.
 
 ## Invariants
 

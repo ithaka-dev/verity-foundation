@@ -214,7 +214,7 @@ Payment edge: `agent → license` over x402 (USDC); the 402-gated resource is th
 - Docker Compose native; deploy as-is, no code porting (see §4.7 for the one qualification)
 - attestation binds the whole compose configuration, not the image alone — **the expected values come from the published `app-compose.json`**, fetched and checked against the `composeHash` committed on chain. Never from the orchestrator's own response: it is the party being verified
 - KMS releases per-app keys only after attestation verifies → use for the app's encrypted persistent state
-- pin dstack version ≥ 0.5.6 (post attestation-pipeline hardening). Attestation structure **measured against 0.5.7**, which Phala **no longer offers** — 0.5.8 and 0.5.9 are current as of 2026-08-08. State continuity was **re-verified on 0.5.9** ([record](../records/experiments/2026-08-08-l02-l03-continuity-on-dstack-059.md)); the *attestation* measurements below have not been re-taken on it
+- pin dstack version ≥ 0.5.6 (post attestation-pipeline hardening). Attestation structure **measured against 0.5.7**, which Phala **no longer offers** — 0.5.8 and 0.5.9 are current as of 2026-08-08. State continuity was **re-verified on 0.5.9** ([record](../records/experiments/2026-08-08-l02-l03-continuity-on-dstack-059.md)); and the attestation structure (`MR-CONFIG-ID` V1, quote layout) **re-confirmed on 0.5.9** by L-04 the same day ([record](../records/experiments/2026-08-08-l04-on-dstack-059.md)). `boot_measurements` remains unexercised against real hardware on any version
 - verification on the agent side via `dstack-verifier` / `dcap-qvl`
 
 **Measured measurement structure** (dstack 0.5.7). RTMR3 accumulates named events:

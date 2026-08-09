@@ -1,6 +1,7 @@
 # closed-loop/
 
-**Status:** L-04 (2026-07-31), **L-02 and L-03 (2026-08-08, on dstack 0.5.9)** have run and passed.
+**Status:** L-02, L-03 and L-04 have all run and passed on **dstack 0.5.9** (2026-08-08); L-04 also
+passed on 0.5.7 (2026-07-31).
 L-01 and L-05 are written and never executed — both need a registry push, which is a Tier 1 secret
 (C5) and therefore a human's to run. The contracts they run against *are* deployed —
 see [`../records/experiments/2026-07-30-first-testnet-deployment.md`](../records/experiments/2026-07-30-first-testnet-deployment.md).
@@ -66,7 +67,8 @@ archive; this is the apparatus.
 | `01-full-loop.sh` | discover → pay → mint → deploy → verify → use | The milestone. |
 | `02-continuity-restart.sh` | keys survive a kill/restart | Exercises key **stability**. **Run 2026-08-08.** |
 | `03-continuity-upgrade.sh` | `app_id` and state survive an in-place upgrade | Exercises `app_id` **preservation** — a different mechanism, so passing 02 says nothing about 03. **Run 2026-08-08 on dstack 0.5.9**, which is the re-verification ADR 0008 requires after a version bump. |
-| `04-refuses-on-mismatch.sh` | an agent refuses a deliberately broken compose | I1. The one that proves the guarantee is real rather than merely configured. **Run 2026-07-31, both directions.** |
+| `04-refuses-on-mismatch.sh` | an agent refuses a deliberately broken compose | I1. The one that proves the guarantee is real rather than merely configured. **Run 2026-07-31 (0.5.7) and 2026-08-08 (0.5.9), both directions.** `boot_measurements` has never
+run on either — the runner has no flag for an OS image reference. |
 | `05-publishing-refuses-tags.sh` | the publishing path resolves tags to digests and refuses a tag | I8, ADR 0007. |
 
 **02 and 03 look like the same test and are not.** A restart re-derives keys for an unchanged
