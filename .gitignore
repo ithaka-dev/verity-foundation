@@ -12,6 +12,13 @@ target/
 # Secrets — never commit. See CLAUDE.md C2.
 *.pem
 *.key
+# ...except captured X.509 **certificates**, which are evidence rather than secrets: a leaf
+# certificate carries a public key and, for dstack RA-TLS, the TDX quote committing to it. Without
+# this the closed-loop capture scripts print "artifacts written to ..." while the file that matters
+# is silently ignored — the certificate is the fixture CR-1's ChannelBound check compares against.
+# Deliberately narrow: only the capture scripts' `*-leaf.pem` naming, only under experiment
+# artifacts, and `*.key` stays ignored unconditionally. Private keys never leave the CVM.
+!records/experiments/artifacts/**/*-leaf.pem
 .env
 .env.*
 !.env.example
