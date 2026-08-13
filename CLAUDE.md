@@ -290,6 +290,15 @@ Recorded in [`docs/decisions/0001-control-center-stack.md`](docs/decisions/0001-
   contracts. Stop, say what you intend, proceed once approved.
 - **HARD FAIL scrutiny** on Solidity security (reentrancy, upgrade safety, audit-readiness) and
   Rust `unsafe`: an explicit logged override is required even with approval.
+- **Language issues are implemented by their team, not by an agent working alone**
+  ([ADR 0026](docs/decisions/0026-language-issues-are-implemented-by-their-team.md)). Every
+  non-trivial Rust, Solidity, TypeScript or Python issue goes through the matching `*-team` skill —
+  architect designs, developer reaches consensus and implements, reviewer judges with no design
+  context. Consulting the skill while implementing alone is **not** the same thing and no longer
+  satisfies this. Trivial changes — typos, comments, compiler-verified renames, version bumps,
+  formatting, mechanical edits already specified by an approved plan — may be done directly; the test
+  is whether anything is being *chosen* rather than transcribed. Shell, Nix, prose, records and ADRs
+  have no team and are out of scope.
 - **Reviewer sign-off is a gate** ([ADR 0018](docs/decisions/0018-reviewer-signoff-is-a-gate.md)).
   Per issue, not per phase: implement → review under the `*-reviewer` skill for that
   language → green light → merge. Nothing advances on the author's own judgement that it is fine.
