@@ -1,7 +1,7 @@
 # Handoff: CR-1 channel binding, from the 2026-08-09 system-design audit
 
 **Date:** 2026-08-09
-**Status:** open
+**Status:** picked up 2026-08-09
 **Author:** Claude (agent), session 058c8112
 **Repo(s):** `verity-foundation` (control centre) → work lands in `verity-verifier`; later phases touch
 `verity-orchestrator`, `verity-contracts`, `verity-payments`, `verity-app-template`
