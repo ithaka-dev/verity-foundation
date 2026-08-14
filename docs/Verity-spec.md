@@ -250,7 +250,26 @@ expected_mrconfigid = 0x01 ‖ licensed_composeHash ‖ 0x00 × 15
 3. check the compose pins the licensed `imageDigest` and contains **no tag references** (§2.2, I8) — the only digest-pinning enforcement an attacker cannot route around
 4. verify the quote's signature chain (DCAP / `dcap-qvl`) up to Intel
 5. compute `expected_mrconfigid` and compare
-6. compare `MRTD` and `RTMR0–2` against references for the expected dstack OS image
+6. **check the quote is about *this connection*** — the quote's `report_data` must equal
+   `sha512("ratls-cert:" ‖ SubjectPublicKeyInfo DER)` of the certificate presented on the TLS
+   handshake being judged ([ADR 0027](decisions/0027-channel-binding-is-an-essential-check.md),
+   verified on real TDX)
+7. compare `MRTD` and `RTMR0–2` against references for the expected dstack OS image
+
+**Steps 1–6 are essential; step 7 is not** (it compares against a reference the caller supplies).
+
+**Without step 6 the other five establish nothing about who you are talking to.** A genuine quote —
+including one recorded from a CVM that has since been destroyed — paired with an attacker's endpoint
+passes steps 1–5 and every stated invariant, while the holder's document goes to the attacker in
+plaintext. This was demonstrated, not theorised: `closed-loop/06-refuses-relayed-endpoint.sh`.
+
+**Step 6 is only possible against a TLS-passthrough endpoint.** dStack's gateway terminates TLS on
+`<app_id>-<port>.<domain>` and passes through on `<app_id>-<port>s.<domain>`. On the terminating form
+the client is handed a *valid Let's Encrypt* certificate for the gateway, so ordinary TLS verification
+succeeds while the peer is not the enclave. **Whatever hands an endpoint to an agent must hand it the
+passthrough form**; the platform's own API advertises the terminating one. A verifier must refuse an
+endpoint it cannot channel-bind rather than fall back — a step-6 failure against a terminating
+endpoint means the *endpoint form* is wrong, never that the check is too strict.
 
 **Never treat the cloud provider's parsed `tcb_info` as the source of truth.** Verifying against a provider's API means trusting *that provider's rendering* of the hardware's statement; verifying against the raw quote means trusting *Intel's signature* over the statement itself. A verifier built on the former would appear to work identically while resting on a much larger trust base — which is the opposite of this project's premise.
 
@@ -344,7 +363,7 @@ Milestone = the closed loop: agent discovers → pays → license minted → con
 
 ## 7. Invariants (enforce in code review)
 
-- **I1.** ⟳ The agent never trusts an endpoint before verification passes — meaning §4.5's comparison list, not an image-digest check alone.
+- **I1.** ⟳ The agent never trusts an endpoint before verification passes — meaning §4.5's comparison list, not an image-digest check alone, and **including the channel binding that ties the attestation to the connection actually in use** ([ADR 0027](decisions/0027-channel-binding-is-an-essential-check.md)). An endpoint that cannot be channel-bound is refused, never accepted on the strength of the other checks: without step 6 the verifier establishes what is running *somewhere*, never what you are talking to.
 - **I2.** Spend limits live in the session-key policy, never in agent logic or prompts. ⟳ *While AA is deferred there are no spend limits, and there must be no pretense of one (§2.7).*
 - **I3.** ⟳ The orchestrator deploys only configurations read from AppManifest — never caller-supplied images, and never "the app's latest version".
 - **I4.** Payment and license mint are atomic from the agent's perspective (the 402 resource is the mint authorization). ⟳ *Re-verify if the payment path moves to ERC-7710 (§4.2).*

@@ -97,8 +97,33 @@ checked*, not only what it concluded.
 quietly stops performing a comparison still reports `accepted`, and every dashboard stays green. The
 list makes the *absence* of a check observable, which is the only way that failure ever surfaces.
 
-Expected members: `quote_signature`, `tcb_status`, `mrconfigid`, `compose_hash`, `image_digest`,
-`os_measurements`.
+Expected members, and these are the **exact** strings `Check::name()` emits — an alert keyed on a
+name the verifier never emits fires never:
+
+| Member | Essential | Notes |
+|---|---|---|
+| `compose_hash` | yes | |
+| `images_pinned` | yes | |
+| `licensed_image_present` | yes | |
+| `quote_signature` | yes | |
+| `tcb_status` | yes | Essential per [ADR 0014](../docs/decisions/0014-verifier-update-discipline.md) decision 2. |
+| `mr_config_id` | yes | |
+| `channel_bound` | yes | [ADR 0027](../docs/decisions/0027-channel-binding-is-an-essential-check.md). |
+| `boot_measurements` | no | Compares against a caller-supplied reference; most callers have none, so absence is a configuration rather than a gap. |
+
+> **This list was wrong until 2026-08-14, and silently.** It previously read `mrconfigid`,
+> `image_digest` and `os_measurements` — three names the verifier has never emitted (`mr_config_id`,
+> `images_pinned` + `licensed_image_present`, and `boot_measurements` respectively), and it omitted
+> `channel_bound` entirely. An F-09 alert built from it would have watched for checks that do not
+> exist while missing every real one: a monitoring rule that cannot fire, which is the same defect
+> class as a gate that cannot fail. The names here are transcribed from
+> `verity-verifier/crates/verity-verifier/src/verdict.rs`'s `Check::name()`; if the two disagree, the
+> code is right and this file is a bug.
+
+**`channel_bound` is the member this section exists for.** A verifier that quietly stopped comparing
+`MR-CONFIG-ID` would still be binding the quote to a real connection; one that quietly stopped
+channel-binding accepts a genuine quote replayed beside any endpoint at all, and every other check
+still passes. Its disappearance from this list is the only signal that failure produces.
 
 ---
 

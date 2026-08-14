@@ -41,13 +41,25 @@
 # (dstack v0.5.9 `ra-tls/src/cert.rs:556-558` → `dstack-attest`'s `QuoteContentType::RaTlsCert`;
 # construction confirmed against dstack's own known-answer vector — see the experiment record.)
 #
-# ## Expected result BEFORE the fix
+# ## Expected result BEFORE the fix — kept as the record that this gate was seen to fail
 #
-# **This script must FAIL.** The runner has no certificate argument, so `--leaf-cert` is ignored, the
-# verdict never mentions `channel_bound`, and a genuine quote is ACCEPTED beside an attacker's key.
-# A red-team script that passes before the fix is testing nothing — see
+# **This script had to FAIL, and did.** The runner had no certificate argument, so `--leaf-cert` was
+# ignored, the verdict never mentioned `channel_bound`, and a genuine quote was ACCEPTED beside an
+# attacker's key. A red-team script that passes before the fix is testing nothing — see
 # `records/experiments/2026-08-04-checks-that-did-not-run.md` for four gates that were green while
 # doing nothing at all.
+#
+# ## Expected result AFTER the fix — current
+#
+# **This script must PASS**, and must pass *for the stated reason*: step 4 refuses with
+# `channel_bound FAILED` while the six configuration essentials still pass in the same run.
+#
+# First seen green on **2026-08-13**, against the CR-1 channel-binding change in `verity-verifier`
+# (`src/channel.rs`, `Check::ChannelBound` essential). Re-confirmed red in the same session by
+# loosening the commitment comparison to `if true` — the gate was watched failing before it was
+# trusted passing.
+#
+# Needs no CVM and no Phala credentials; network only, for Intel collateral. An agent may run it.
 #
 #   ./06-refuses-relayed-endpoint.sh
 set -euo pipefail
@@ -130,10 +142,26 @@ echo "  quote report_data is:  ${quote_actual:0:32}…"
 [ "$relay_expected" != "$quote_actual" ] \
   || fail "the relay key collided with the enclave's — this is not possible; check the extraction"
 
+# The compose hash a licence would name, transcribed from the verifier's own fixture record
+# (`crates/verity-verifier/tests/fixtures/PROVENANCE.md`) and equal to the value this quote's
+# MR-CONFIG-ID carries.
+#
+# **Supplying it is what makes step 3's `compose_hash passed` mean anything.** Without
+# `--licensed-compose-hash` the runner derives the reference from the document it was just handed,
+# comparing sha256(doc) against sha256(doc) — a check that passes for every input and would keep
+# passing with `VerifiedCompose::check` deleted. That is not a positive control, it is a decoration,
+# and this script was relying on it until 2026-08-13.
+#
+# Transcribed rather than computed on purpose: a third artifact is what makes checks 1 and 6
+# independent of each other. Derive it from the compose and check 1 is vacuous; derive it from the
+# quote and check 6 is. If the fixture ever drifts, step 3 goes red — which is correct.
+licensed_hash="64690ef38b54187da11a41a54905f5f539e948a0414ceb312c8036c82f6529fd"
+
 run_verifier() {
   cargo run --quiet --manifest-path "$verifier/Cargo.toml" \
     --example verify-attestation --features attest -- \
-    --attestation "$work/att.json" --compose "$compose" --image-digest "$digest" "$@"
+    --attestation "$work/att.json" --compose "$compose" --image-digest "$digest" \
+    --licensed-compose-hash "$licensed_hash" "$@"
 }
 
 say 3 "positive control — the evidence itself is genuine and complete"
@@ -152,7 +180,18 @@ for check in compose_hash images_pinned licensed_image_present quote_signature t
         The fixture or the collateral fetch is the problem, not channel binding.
         Fix that before reading step 4 — a refusal here would be a false positive."; }
 done
+
+# `compose_hash passed` above is only evidence if the runner was given a reference from outside the
+# document. It says so itself when it was not, so catch that here rather than trusting the flag was
+# threaded through.
+if grep -q "CANNOT FAIL" "$work/control.txt"; then
+  sed 's/^/    /' "$work/control.txt" >&2
+  fail "the runner derived the licensed hash from the document, so compose_hash cannot fail.
+        --licensed-compose-hash was not passed through. The grep above is worthless in that
+        state and this control is not a control."
+fi
 echo "  all six non-channel essentials passed on the genuine quote"
+echo "  (compose_hash checked against a licensed hash from outside the document, not derived)"
 
 say 4 "the red team — the same genuine quote, presented over the relay's connection"
 

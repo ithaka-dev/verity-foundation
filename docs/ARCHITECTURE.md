@@ -60,12 +60,12 @@ graph TB
     O -->|"4 watches licence state"| LT
     O -->|"5 resolves licensed digest"| AM
     O -->|"6 deploys"| CVM
-    O -->|"7 endpoint + evidence"| A
+    O -->|"7 passthrough endpoint + evidence"| A
     V -->|"8 fetch compose"| IPFS
     V -->|"9 fetch collateral"| INTEL
     V -->|"10 verdict"| A
     A -->|"11 use, only if trustworthy"| CVM
-    CVM -.->|"RA-TLS cert carries the raw quote"| V
+    CVM -.->|"RA-TLS cert carries the raw quote,<br/>and report_data commits to its key"| V
 
     classDef built fill:#1f6f43,stroke:#0d3a23,color:#fff
     classDef external fill:#334155,stroke:#1e293b,color:#fff
@@ -126,8 +126,9 @@ sequenceDiagram
     O->>D: deploy app-compose.json
     D-->>O: app_id, cvm_id, endpoint
     O-->>A: endpoint + attestation evidence
+    Note over O,A: the endpoint must be the TLS-passthrough form<br/>(appId-PORTs.domain — note the trailing s) or the agent's<br/>TLS peer is the gateway and nothing can be<br/>channel-bound (ADR 0027)
 
-    A->>V: verify(endpoint, evidence, licensed)
+    A->>V: verify(endpoint, evidence + leaf cert, licensed)
     V-->>A: Verdict
     alt every essential check passed
         A->>D: use the tool
@@ -144,7 +145,7 @@ never acquire.
 
 ## 3. What verification actually checks
 
-`verity-verifier` performs seven checks and reports each one individually. **A verdict is never a
+`verity-verifier` performs eight checks and reports each one individually. **A verdict is never a
 bare boolean** (ADR 0014 decision 1) — that is what makes a weakened verifier detectable, because
 one that stopped comparing `MR-CONFIG-ID` still returns "verified" but can no longer claim to have
 compared it.
@@ -172,20 +173,37 @@ flowchart TD
     SKIP --> C6
     C6{"6 · MrConfigId<br/>0x01 ‖ composeHash ‖ 0x00×15"}
     C6 --> C7
-    C7{"7 · BootMeasurements<br/>only if a reference was supplied"}
+    C7{"7 · ChannelBound<br/>report_data == sha512(<br/>'ratls-cert:' ‖ SPKI DER)?"}
+    C7 -->|no cert supplied| CBSKIP["<b>skipped</b> — and skipped is<br/>not passed, so the verdict<br/>is untrustworthy"]
+    C7 --> C8
+    CBSKIP --> C8
+    C8{"8 · BootMeasurements<br/>only if a reference was supplied"}
 
-    C7 --> VERDICT["Verdict:<br/>every check + its outcome"]
-    VERDICT --> TRUST{"all six essentials<br/>passed?"}
+    C8 --> VERDICT["Verdict:<br/>every check + its outcome"]
+    VERDICT --> TRUST{"all seven essentials<br/>passed?"}
     TRUST -->|yes| OK(["trustworthy"])
     TRUST -->|no| NO(["NOT trustworthy —<br/>named, so the caller knows which"])
 
     classDef essential fill:#7f1d1d,stroke:#450a0a,color:#fff
-    class C1,C2,C3,C4,C5,C6 essential
+    class C1,C2,C3,C4,C5,C6,C7 essential
 ```
 
-Checks 1–6 are **essential**: the verdict is untrustworthy unless every one of them ran *and*
-passed. Check 7 is not — it compares against a reference the caller supplies, and most callers have
+Checks 1–7 are **essential**: the verdict is untrustworthy unless every one of them ran *and*
+passed. Check 8 is not — it compares against a reference the caller supplies, and most callers have
 none, so its absence is a configuration rather than a gap.
+
+**Check 7 is what makes the other six about a connection rather than about a machine somewhere.**
+Without it a genuine quote — including one recorded from a CVM that no longer exists — paired with an
+attacker's endpoint passes checks 1–6 and returns trustworthy
+([ADR 0027](decisions/0027-channel-binding-is-an-essential-check.md)). It is only implementable
+against dStack's **TLS-passthrough** endpoint form (`<app_id>-<port>s.<domain>`); on the terminating
+form the client is handed a valid Let's Encrypt certificate for the gateway, so ordinary TLS
+verification succeeds while the peer is not the enclave. A check-7 failure against a terminating
+endpoint means the endpoint form is wrong — never that the check is too strict.
+
+It binds the quote to a certificate the caller *supplied*. It cannot establish that the certificate
+came from the handshake being judged; the crate performs no I/O. Closing that is MA-1's
+`connect_verified`, and until it lands **CR-1 is not finished**.
 
 Three properties that are easy to get wrong and are each a defect this project has actually made:
 
