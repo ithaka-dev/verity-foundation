@@ -1,0 +1,12 @@
+{
+  "captured": "2026-08-09",
+  "dstack_image": "dstack-0.5.9",
+  "cvm_id": "5a61e31c-fa8e-4b8d-8c83-69ce8ad83783",
+  "app_id": "1f757bccc24b1264b0b546f2e280907b786465bf",
+  "passthrough_host": "1f757bccc24b1264b0b546f2e280907b786465bf-8443s.dstack-pha-prod5.phala.network",
+  "terminated_host": "1f757bccc24b1264b0b546f2e280907b786465bf-8443.dstack-pha-prod5.phala.network",
+  "enclave_cert_sha256": "830bb3da253e64e920c0f2900af9e6a57cc99ad3ee81a6c1bd7ce08246a00198",
+  "passthrough_cert_sha256": "830bb3da253e64e920c0f2900af9e6a57cc99ad3ee81a6c1bd7ce08246a00198",
+  "terminated_cert_sha256": "0b8b15b8d3960bb6f8ec3dff4b7346761d23d296ebc9f22f2f584a188eeaf14a",
+  "spki_commitment": "d1a4ed6d2c12c02deb6b54edd6a406b5d146191db59dd51fcb5fc0910dbb4a02ec545080541fbcd1993a0eb9b45aadeb124d2adaafee6501dec9087ef80699f4"
+}

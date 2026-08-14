@@ -1,0 +1,19 @@
+endpoint:       https://1f757bccc24b1264b0b546f2e280907b786465bf-8443s.dstack-pha-prod5.phala.network
+endpoint form:  DstackPassthrough
+licensed hash:  8a10576b9dcc51d6a1cd71206958eb97acf1bc7d4d510c51441283cccc95c0e3
+
+checks performed:
+  compose_hash           passed
+  images_pinned          passed
+  licensed_image_present passed
+  quote_signature        passed
+  tcb_status             passed
+  mr_config_id           passed
+  boot_measurements      skipped (no OS image reference supplied)
+  channel_bound          passed
+
+channel binding established over SPKI (91 bytes)
+GET / -> 200
+body: verity-gateway-probe
+
+CONNECTED

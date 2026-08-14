@@ -52,6 +52,19 @@ def via_sdk() -> tuple[dict, str] | None:
         return {"key": key, "certificate_chain": chain}, "dstack-sdk"
     except Exception as exc:  # noqa: BLE001
         log(f"SDK_CALL_FAILED {type(exc).__name__}: {exc}")
+        # A 4xx means the endpoint exists and rejected what we sent, which is a different problem
+        # from the endpoint being absent — and the status line alone does not say which field it
+        # objected to. The body usually does, and without it the next run is another guess costing
+        # another CVM. `httpx` hangs the response off the exception; other clients may not.
+        body = getattr(getattr(exc, "response", None), "text", None)
+        if body:
+            log(f"SDK_CALL_FAILED_BODY {body[:400]}")
+        try:
+            import dstack_sdk  # type: ignore
+
+            log(f"SDK_VERSION {getattr(dstack_sdk, '__version__', 'unknown')}")
+        except Exception:  # noqa: BLE001
+            pass
         return None
 
 
@@ -60,13 +73,25 @@ def via_rpc() -> tuple[dict, str] | None:
     import socket
     import urllib.parse
 
-    body = json.dumps(
-        {"subject": SUBJECT, "usage_server_auth": True, "usage_ra_tls": True}
-    )
+    # Two request shapes, because a 400 says the endpoint exists and disliked the body. The SDK's
+    # own call went to `/GetTlsKey` — **unprefixed** — which none of the `/prpc/...` candidates below
+    # covered, so on the run that produced that 400 this fallback could only 404 and return None.
+    # A fallback that does not cover the path the primary uses is not a fallback.
+    bodies = [
+        json.dumps({"subject": SUBJECT, "usage_server_auth": True, "usage_ra_tls": True}),
+        # Minimal: if the agent objected to a field, this says which side the fault is on.
+        json.dumps({"subject": SUBJECT}),
+    ]
     for sock_path in ("/var/run/dstack.sock", "/var/run/tappd.sock"):
         if not os.path.exists(sock_path):
             continue
-        for path in ("/prpc/GetTlsKey", "/prpc/DstackGuest.GetTlsKey", "/prpc/Tappd.GetTlsKey"):
+        for path in (
+            "/GetTlsKey",
+            "/prpc/GetTlsKey",
+            "/prpc/DstackGuest.GetTlsKey",
+            "/prpc/Tappd.GetTlsKey",
+        ):
+          for body in bodies:
             try:
                 s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
                 s.settimeout(20)
@@ -81,11 +106,16 @@ def via_rpc() -> tuple[dict, str] | None:
                 while chunk := s.recv(65536):
                     buf += chunk
                 s.close()
+                head = buf.split(b"\r\n", 1)[0].decode(errors="replace")
                 payload = buf.split(b"\r\n\r\n", 1)[1] if b"\r\n\r\n" in buf else b""
                 data = json.loads(payload)
                 if "certificate_chain" in data:
                     return data, f"rpc {sock_path}{path}"
-            except Exception:  # noqa: BLE001 - each candidate is allowed to fail
+                # Reached the agent and got something that is not a certificate. Say what, or the
+                # next run is another guess costing another CVM.
+                log(f"RPC_REJECTED {path} <- {head} :: {payload[:200]!r}")
+            except Exception as exc:  # noqa: BLE001 - each candidate may fail
+                log(f"RPC_CANDIDATE_FAILED {path} {type(exc).__name__}: {str(exc)[:120]}")
                 continue
     return None
 

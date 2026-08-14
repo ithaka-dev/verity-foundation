@@ -1,0 +1,8 @@
+endpoint:       https://1f757bccc24b1264b0b546f2e280907b786465bf-8443.dstack-pha-prod5.phala.network
+endpoint form:  DstackTerminating
+licensed hash:  8a10576b9dcc51d6a1cd71206958eb97acf1bc7d4d510c51441283cccc95c0e3
+
+refusal kind:   endpoint_unusable
+refusal:        `1f757bccc24b1264b0b546f2e280907b786465bf-8443.dstack-pha-prod5.phala.network` is dStack's TLS-terminating gateway form: the certificate it presents belongs to the gateway, not the enclave, so this connection can never be channel bound. Use the passthrough form `1f757bccc24b1264b0b546f2e280907b786465bf-8443s.dstack-pha-prod5.phala.network`
+
+REFUSED

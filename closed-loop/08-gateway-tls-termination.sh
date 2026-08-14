@@ -72,7 +72,26 @@ here="$(cd "$(dirname "$0")" && pwd)"
 # step 7 and steps 8-11 were unreachable. `bash -n` does not catch an unbound variable and nothing
 # here had shellcheck, so the script passed every check it was given and could never have run.
 verifier="${VERITY_VERIFIER:-$here/../../verity-verifier}"
-out="${OUT_DIR:-$here/../records/experiments/artifacts/2026-08-09-gateway-tls-mode}"
+# Dated per run, and it **refuses to overwrite**. The previous default was a fixed
+# `2026-08-09-gateway-tls-mode`, so every run silently replaced the last one's evidence — which is
+# how the 2026-08-14 run overwrote the 2026-08-13 certificate that
+# `verity-verifier/crates/verity-verifier/tests/fixtures/PROVENANCE.md` cites **by SHA-256**. The
+# fixture would have gone on naming a hash no committed artifact contained.
+#
+# `records/` is append-only (CLAUDE.md §3). A harness that writes into it must not be the thing that
+# breaks that.
+if [ -n "${OUT_DIR:-}" ]; then
+  out="$OUT_DIR"
+else
+  base="$here/../records/experiments/artifacts/$(date +%Y-%m-%d)-gateway-end-to-end"
+  out="$base"
+  n=2
+  while [ -e "$out" ] && [ -n "$(ls -A "$out" 2>/dev/null)" ]; do
+    out="$base-$n"
+    n=$((n + 1))
+  done
+fi
+echo "artifacts will be written to: $out"
 work="$(mktemp -d)"
 name="verity-gw-$$"
 deployed=""
@@ -238,7 +257,14 @@ leaf_of() {
 
   # The first certificate only. `head -n <fixed>` could truncate mid-PEM and produce a file that is
   # non-empty and unparseable, which is the same trap in a different disguise.
-  awk '/-----BEGIN CERTIFICATE-----/{n++} n==1' "$diag" > "$dest"
+  # Exactly the first certificate: start at BEGIN, **stop at END**. The previous version kept every
+  # line from the first BEGIN until the second, which swept up `s_client`'s header lines for the
+  # next certificate in the chain (` 1 s:CN=…`). `openssl x509 -in` tolerates that trailing text, so
+  # steps 4-6 passed for two runs — and the Rust runner's strict `pem-rfc7468` correctly does not,
+  # failing with "PEM error in pre-encapsulation boundary" at step 7. A lenient parser hid a
+  # malformed artifact from a strict one.
+  awk '/-----BEGIN CERTIFICATE-----/{p=1} p{print} /-----END CERTIFICATE-----/{if (p) exit}' \
+    "$diag" > "$dest"
   [ -s "$dest" ] || return 1
   grep -q -- "-----END CERTIFICATE-----" "$dest" || return 1
 
@@ -473,10 +499,24 @@ sed 's/^/    /' "$work/verify-good.txt"
 # Like 04, this script has a deployment and no licence, so the licensed hash is computed from the
 # served document and check 1 is self-referential here. `mr_config_id` is the check comparing against
 # the hardware, and `channel_bound` is the one this step exists for.
+# "Could not run" and "refused" are different findings and must not share an exit path. The runner
+# exits 2 when it cannot read its inputs and 1 when the verdict refuses — a distinction `04` and `06`
+# already rely on. The first version of this step checked only for `channel_bound passed`, so when a
+# malformed PEM made the runner exit 2 it reported "the verifier disagreeing with the hardware. Do
+# not loosen the check" — a confident diagnosis of a defect that was not there, pointing at the one
+# thing that must never be loosened. Diagnose the input first.
+if [ $good -eq 2 ]; then
+  fail "the runner could not read its own inputs — this says NOTHING about channel binding.
+        Read the message above: it names the argument it could not parse. Steps 4-6 passed, so the
+        handshake and the commitment are fine; what failed is this script's handling of an artifact.
+        Do not touch the verifier."
+fi
+
 grep -qE "^  channel_bound +passed" "$work/verify-good.txt" || fail \
   "the certificate from the live handshake did not channel-bind to its own quote.
-        Steps 4-6 showed the fingerprints match, so this is the verifier disagreeing with the
-        hardware — not an endpoint-form problem. Do not loosen the check."
+        Steps 4-6 showed the fingerprints match, and the runner read its inputs, so this is the
+        verifier disagreeing with the hardware — not an endpoint-form problem, and not a malformed
+        artifact. Do not loosen the check."
 grep -qE "^  mr_config_id +passed" "$work/verify-good.txt" || fail \
   "channel_bound passed but mr_config_id did not, on a deployment we just made.
         The refusal is real; investigate before trusting the channel-binding result."

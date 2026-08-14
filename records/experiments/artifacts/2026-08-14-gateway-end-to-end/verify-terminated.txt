@@ -1,0 +1,22 @@
+quote:          5010 bytes
+compose:        29534 bytes
+licensed hash:  8a10576b9dcc51d6a1cd71206958eb97acf1bc7d4d510c51441283cccc95c0e3
+endpoint:       https://1f757bccc24b1264b0b546f2e280907b786465bf-8443s.dstack-pha-prod5.phala.network
+
+checks performed:
+  compose_hash           passed
+  images_pinned          passed
+  licensed_image_present passed
+  quote_signature        passed
+  tcb_status             passed
+  mr_config_id           passed
+  boot_measurements      skipped (no OS image reference supplied)
+  channel_bound          FAILED (channel binding failed: this certificate commits to 35315653eead1d4a8fd2f8dad526b2e964483bdd94cc20d43b5216feeb59f7ba3ad5f5b0d5659b31d72296def27cf1fe7cbd1efbafb0554f5b0f8bd32561ebe8, the quote carries d1a4ed6d2c12c02deb6b54edd6a406b5d146191db59dd51fcb5fc0910dbb4a02ec545080541fbcd1993a0eb9b45aadeb124d2adaafee6501dec9087ef80699f4)
+
+measured boot registers (a reference is captured, never derived):
+  mrtd   f06dfda6dce1cf904d4e2bab1dc370634cf95cefa2ceb2de2eee127c9382698090d7a4a13e14c536ec6c9c3c8fa87077
+  rtmr0  68102e7b524af310f7b7d426ce75481e36c40f5d513a9009c046e9d37e31551f0134d954b496a3357fd61d03f07ffe96
+  rtmr1  07e6f51aa763abfe75c3ddfbf4f425fe3f0ceff66d807a75e049303dce9addf68e7218729bd419638af63a370f65878c
+  rtmr2  df67e467e60edc1737bcf8e682d48131bfb427f523226aa7f197a7608e9b3784783fa759ef5b28191fa12f9ddb36b858
+
+REFUSED
