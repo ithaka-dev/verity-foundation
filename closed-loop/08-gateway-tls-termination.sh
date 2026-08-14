@@ -47,6 +47,16 @@
 #    trusted** certificate the gateway hands a client on the terminating form of this very CVM. It
 #    validates under ordinary TLS and must still be refused.
 #
+# 5. **MA-1's verified transport (steps 10 and 11).** Steps 7 and 8 hand `verify()` a certificate
+#    *this script* captured — a supported path, and the residual ADR 0027 records, because the
+#    library cannot know where that certificate came from. Step 10 runs `connect_verified`, which
+#    dials the endpoint itself, and then *uses* the client it returns. Step 11 is the matching
+#    negative on the terminating form, asserted on the refusal **kind**: a run that refuses for the
+#    wrong reason has demonstrated nothing about step 10.
+#
+#    This is the only place the end-to-end positive can exist. A trustworthy verdict needs an
+#    Intel-signed quote committing to a key the endpoint holds, which no local test can produce.
+#
 # ## Cost and secrets
 #
 # Deploys one small CVM with a public port and deletes it on any exit. Needs an authenticated Phala
@@ -57,6 +67,11 @@
 set -euo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
+# Steps 7-11 run the verifier out of the sibling repo. This assignment was **missing** until
+# 2026-08-14: `$verifier` was used twice and defined nowhere, so under `set -u` the run aborted at
+# step 7 and steps 8-11 were unreachable. `bash -n` does not catch an unbound variable and nothing
+# here had shellcheck, so the script passed every check it was given and could never have run.
+verifier="${VERITY_VERIFIER:-$here/../../verity-verifier}"
 out="${OUT_DIR:-$here/../records/experiments/artifacts/2026-08-09-gateway-tls-mode}"
 work="$(mktemp -d)"
 name="verity-gw-$$"
@@ -413,6 +428,19 @@ json.dump({'app_certificates': [{'quote': q}]}, open('$work/live-att.json', 'w')
 
 # The compose the platform actually ran, byte-exact. Re-serialising would change whitespace and
 # therefore the hash, producing a mismatch that looks like an attack.
+#
+# Fetched here, and this call was **missing** until 2026-08-14: the block below read `att.json` and
+# nothing in this script ever wrote it. Only `live-att.json` (assembled from the certificate's own
+# quote, above) existed. Two independent defects on the same line of reasoning — a variable never
+# assigned and a file never created — both invisible to `bash -n`.
+# stderr is kept, not discarded. `|| fail` reports *that* the call failed and never *why* — an
+# expired session, a rate limit and a wrong CVM id are three different mornings, and the difference
+# is only ever in the text the CLI writes to stderr. This is the lesson `leaf_of` already writes down
+# a few steps above; `2>/dev/null` here would have thrown it away again.
+phala cvms attestation "$cvm" --json > "$work/att.json" 2>"$work/att.stderr" \
+  || fail "could not read the attestation for $cvm:
+        $(sed 's/^/        /' "$work/att.stderr" 2>/dev/null | tail -5)"
+
 python3 -c "
 import json, re, sys
 d = json.load(open('$work/att.json'))
@@ -484,7 +512,88 @@ cp "$work/verify-good.txt" "$out/verify-passthrough.txt" 2>/dev/null || true
 cp "$work/verify-bad.txt"  "$out/verify-terminated.txt" 2>/dev/null || true
 cp "$work/live-quote.hex"  "$out/live-quote.hex" 2>/dev/null || true
 
-say 9 "answered"
+# — MA-1: the verified transport —
+#
+# Steps 7 and 8 exercise `verify()` with a certificate *this script* captured. That is a supported
+# path and it stays exactly as it is, but it is also the residual ADR 0027 records: the library is
+# trusting the caller for provenance, because it performs no I/O and cannot know the certificate
+# came from the handshake being judged.
+#
+# Steps 10 and 11 run `connect_verified`, which dials the endpoint itself. Nothing about the
+# connection comes from the command line except the URL — the socket, the handshake, the certificate
+# and the quote are all obtained inside the library, and a client is returned only when every
+# essential check passed against *that* handshake.
+#
+# **This is the only place the end-to-end positive can exist.** A trustworthy verdict needs an
+# Intel-signed quote committing to a key the endpoint actually holds; no local test can produce one,
+# and every seam that could manufacture one would be a seam an attacker could reach for. The local
+# suite is therefore refusals plus one bounded positive control, and this is the rest.
+
+say 10 "the end-to-end positive — connect_verified against the live passthrough endpoint"
+
+run_connect() {
+  cargo run --quiet --manifest-path "$verifier/Cargo.toml" \
+    --example connect-verified --features connect -- \
+    --endpoint "https://$1" --compose "$work/live-compose.json" \
+    --image-digest "$live_digest" --licensed-compose-hash "$live_hash" \
+    --path /
+}
+
+set +e
+run_connect "$passthrough" > "$work/connect-good.txt" 2>&1
+connected=$?
+set -e
+sed 's/^/    /' "$work/connect-good.txt"
+
+grep -qE "^  channel_bound +passed" "$work/connect-good.txt" || fail \
+  "connect_verified did not channel-bind the connection it opened itself.
+        Step 7 passed with a certificate this script captured, so if that succeeded and this did
+        not, the difference is the handshake the library performed — not the endpoint. Do not
+        loosen the check."
+grep -q "^CONNECTED" "$work/connect-good.txt" || fail \
+  "every named check passed but no client was produced — read the transcript above."
+# **The transport is used, not merely opened.** A client that connects and is never exercised has
+# not demonstrated that the verified socket carries anything, which is half of what MA-1 claims.
+grep -q "verity-gateway-probe" "$work/connect-good.txt" || fail \
+  "the client connected but its GET / did not return the probe's body.
+        The verification succeeded and the transport did not, which means \`VerifiedClient\` is a
+        verdict with a struct around it — the exact shape MA-1 exists to refuse."
+[ $connected -eq 0 ] || fail \
+  "CONNECTED was printed and the exit code was $connected — the two must agree."
+echo "  CONNECTED: the library dialled, verified and used the connection itself."
+
+say 11 "the end-to-end negative — the same CVM, the terminating form"
+
+# **Step 11 is the reason step 10 means anything.** Without it, "refuses the terminating form" and
+# "refuses everything" look identical from the transcript. And the refusal must be the *endpoint
+# form* one: a run that refuses for the wrong reason has demonstrated nothing about step 10.
+set +e
+run_connect "$terminated" > "$work/connect-bad.txt" 2>&1
+refused=$?
+set -e
+sed 's/^/    /' "$work/connect-bad.txt"
+
+[ $refused -ne 0 ] || fail \
+  "connect_verified returned a client for dStack's TLS-terminating gateway form.
+        The peer is the gateway, not the enclave. This is CR-1 alive one layer up."
+grep -qE "^refusal kind:   endpoint_unusable" "$work/connect-bad.txt" || fail \
+  "the terminating form was refused, but not for being the terminating form.
+        Expected \`endpoint_unusable\`; the transcript above says otherwise. A refusal that arrives
+        as a bare channel_bound mismatch is the one that reads as 'the check is too strict' and
+        invites the loosening ADR 0009 rule 3 forbids — which is why this assertion is on the kind
+        and not merely on the exit code."
+grep -q "channel_bound" "$work/connect-bad.txt" && fail \
+  "the terminating form was dialled before being classified: a channel_bound outcome means a
+        handshake happened. It must be refused before a socket is opened."
+grep -q -- "-8443s\." "$work/connect-bad.txt" || fail \
+  "the refusal did not name the passthrough host to use instead. An operator told only that their
+        endpoint is wrong, without being told what is right, reaches for the check."
+echo "  REFUSED: before a socket was opened, naming the passthrough form as the fix."
+
+cp "$work/connect-good.txt" "$out/connect-passthrough.txt" 2>/dev/null || true
+cp "$work/connect-bad.txt"  "$out/connect-terminated.txt" 2>/dev/null || true
+
+say 12 "answered"
 echo "  Channel binding is implementable — but ONLY against the 's'-suffixed passthrough endpoint."
 echo "  On the default form the agent's TLS peer is the gateway, and report_data commits to a key"
 echo "  the agent never sees. Whatever returns an endpoint to an agent must return the passthrough"

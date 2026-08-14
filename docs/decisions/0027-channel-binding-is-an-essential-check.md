@@ -1,6 +1,9 @@
 # 0027. Channel binding is an essential verification check
 
-**Status:** accepted
+**Status:** accepted — **amended by
+[ADR 0028](0028-channel-binding-requires-proof-of-possession.md)**, which adds the proof-of-possession
+constraint this record did not state. Read them together; the residual described here is larger than
+the wording below conveys.
 **Date:** 2026-08-14
 **Supersedes:** —
 **Relates to:** spec §4.5, I1; [ADR 0009](0009-verification-model.md),
