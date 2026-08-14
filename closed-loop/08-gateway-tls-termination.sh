@@ -31,6 +31,22 @@
 # A run where (1) holds and (2) does not has not demonstrated passthrough — it has demonstrated that
 # the two URLs happen to agree, which is a different and much weaker fact.
 #
+# 3. **The end-to-end positive (step 7).** The verifier is then run over the connection this script
+#    is actually holding: the quote is extracted from the served certificate's own attestation
+#    extension, the compose comes from the platform's `tcb_info`, and `verify-attestation` is invoked
+#    with `--leaf-cert` pointing at the certificate the handshake produced. `channel_bound` must
+#    **pass**.
+#
+#    **That direction exists nowhere else.** `06` proves the negative from a recorded quote,
+#    assertions 1-2 above prove the commitment holds on hardware, and `04` cannot supply a
+#    certificate at all — it reports `channel_bound skipped`. A body of evidence made only of
+#    refusals cannot distinguish "the check works" from "the check refuses everything", which is the
+#    trap `04` step 3 exists to avoid, applied to the check CR-1 added.
+#
+# 4. **The matching negative (step 8)**, and the strongest one available: the **real, publicly
+#    trusted** certificate the gateway hands a client on the terminating form of this very CVM. It
+#    validates under ordinary TLS and must still be refused.
+#
 # ## Cost and secrets
 #
 # Deploys one small CVM with a public port and deletes it on any exit. Needs an authenticated Phala
@@ -356,7 +372,119 @@ json.dump({
 }, open('$out/provenance.json','w'), indent=2)
 "
 
-say 7 "answered"
+say 7 "the end-to-end positive — verifying the connection we are actually holding"
+
+# Everything above establishes that the certificate a client receives is the one the enclave
+# committed to. This step is the one that runs *the verifier* over it, which is the demonstration
+# CR-1 otherwise lacks:
+#
+#   06 proves the NEGATIVE from a recorded quote (a genuine quote + a foreign key is refused).
+#   08 steps 1-6 prove the commitment holds on hardware.
+#   04 cannot supply a certificate at all, so channel_bound is skipped there.
+#
+# Nothing, until here, has watched `channel_bound` PASS against a live endpoint. A refusal-only body
+# of evidence cannot distinguish "the check works" from "the check refuses everything" — the trap 04
+# step 3 exists to avoid, applied to the check CR-1 added.
+#
+# The quote comes out of the certificate the handshake produced, not from the cloud API. Everything
+# in this step therefore derives from the connection itself, which is the property being tested.
+python3 - "$work/passthrough.pem" "$work/live-quote.hex" <<'PY'
+import sys
+from cryptography import x509
+
+cert = x509.load_pem_x509_certificate(open(sys.argv[1], "rb").read())
+blob = cert.extensions.get_extension_for_oid(
+    x509.ObjectIdentifier("1.3.6.1.4.1.62397.1.1")).value.value
+# The quote sits inside a nested DER OCTET STRING; find the TDX v4 header rather than assuming the
+# wrapper's width, so a change in the encoding surfaces as "not found" instead of an off-by-n.
+i = blob.find(bytes.fromhex("0400020081000000"))
+if i < 0:
+    sys.exit("no TDX v4 quote header inside the certificate's attestation extension")
+open(sys.argv[2], "w").write(blob[i:].hex())
+print(f"  quote extracted from the served certificate: {len(blob) - i} bytes")
+PY
+[ -s "$work/live-quote.hex" ] || fail "could not extract a quote from the handshake certificate"
+
+python3 -c "
+import json
+q = open('$work/live-quote.hex').read().strip()
+json.dump({'app_certificates': [{'quote': q}]}, open('$work/live-att.json', 'w'))
+"
+
+# The compose the platform actually ran, byte-exact. Re-serialising would change whitespace and
+# therefore the hash, producing a mismatch that looks like an attack.
+python3 -c "
+import json, re, sys
+d = json.load(open('$work/att.json'))
+doc = (d.get('tcb_info') or {}).get('app_compose')
+if not doc: sys.exit('attestation carries no tcb_info.app_compose')
+open('$work/live-compose.json','w').write(doc)
+m = re.search(r'@(sha256:[0-9a-f]{64})', json.load(open('$work/live-compose.json'))['docker_compose_file'])
+if not m: sys.exit('no digest-pinned image in the served compose')
+open('$work/live-digest.txt','w').write(m.group(1))
+" || fail "could not recover the served compose from the attestation"
+live_digest=$(cat "$work/live-digest.txt")
+live_hash=$(python3 -c "
+import hashlib
+print(hashlib.sha256(open('$work/live-compose.json','rb').read()).hexdigest())")
+
+run_verify() {
+  cargo run --quiet --manifest-path "$verifier/Cargo.toml" \
+    --example verify-attestation --features attest -- \
+    --attestation "$work/live-att.json" --compose "$work/live-compose.json" \
+    --image-digest "$live_digest" --licensed-compose-hash "$live_hash" \
+    --endpoint "https://$passthrough" --leaf-cert "$1"
+}
+
+set +e
+run_verify "$work/passthrough.pem" > "$work/verify-good.txt" 2>&1
+good=$?
+set -e
+sed 's/^/    /' "$work/verify-good.txt"
+
+# Like 04, this script has a deployment and no licence, so the licensed hash is computed from the
+# served document and check 1 is self-referential here. `mr_config_id` is the check comparing against
+# the hardware, and `channel_bound` is the one this step exists for.
+grep -qE "^  channel_bound +passed" "$work/verify-good.txt" || fail \
+  "the certificate from the live handshake did not channel-bind to its own quote.
+        Steps 4-6 showed the fingerprints match, so this is the verifier disagreeing with the
+        hardware — not an endpoint-form problem. Do not loosen the check."
+grep -qE "^  mr_config_id +passed" "$work/verify-good.txt" || fail \
+  "channel_bound passed but mr_config_id did not, on a deployment we just made.
+        The refusal is real; investigate before trusting the channel-binding result."
+[ $good -eq 0 ] || fail \
+  "every named check passed but the verdict was still refused — read the transcript above for a
+        check this assertion does not name."
+echo "  ACCEPTED: channel_bound passed against the certificate this run actually handshook with."
+
+say 8 "the end-to-end negative — the same quote, the gateway's certificate"
+
+# The strongest available negative: not a random key, but the *real* publicly-trusted certificate a
+# client is handed on the terminating form of this very CVM. Ordinary TLS verification accepts it.
+if [ -s "$work/terminated.pem" ]; then
+  set +e
+  run_verify "$work/terminated.pem" > "$work/verify-bad.txt" 2>&1
+  bad=$?
+  set -e
+  grep -qE "^  channel_bound +FAILED" "$work/verify-bad.txt" || {
+    sed 's/^/    /' "$work/verify-bad.txt" >&2
+    fail "the gateway's certificate was NOT refused by channel binding.
+        This is CR-1 alive: an agent talking to the gateway would believe it was talking to the
+        enclave, and the gateway's certificate validates under ordinary TLS."
+  }
+  [ $bad -ne 0 ] || fail "channel_bound FAILED yet the verdict was ACCEPTED — the check is recorded
+        but not essential. That is the exact defect ADR 0014 exists to make visible."
+  echo "  REFUSED: the gateway's valid Let's Encrypt certificate does not bind to the enclave's quote."
+else
+  echo "  SKIPPED: no terminating-form certificate was captured, so the negative could not run."
+  echo "  The positive above stands, but this run did not demonstrate the refusal."
+fi
+
+cp "$work/verify-good.txt" "$out/verify-passthrough.txt" 2>/dev/null || true
+cp "$work/verify-bad.txt"  "$out/verify-terminated.txt" 2>/dev/null || true
+cp "$work/live-quote.hex"  "$out/live-quote.hex" 2>/dev/null || true
+
+say 9 "answered"
 echo "  Channel binding is implementable — but ONLY against the 's'-suffixed passthrough endpoint."
 echo "  On the default form the agent's TLS peer is the gateway, and report_data commits to a key"
 echo "  the agent never sees. Whatever returns an endpoint to an agent must return the passthrough"

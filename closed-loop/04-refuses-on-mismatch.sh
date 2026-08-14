@@ -143,6 +143,39 @@ print((d.get('tcb_info') or {}).get('mrtd') or 'unknown')" 2>/dev/null || echo u
 echo "  mrtd: $mrtd"
 echo "  os image pinned at deploy: ${DSTACK_IMAGE:-dstack-0.5.9}"
 
+# — the boot reference, defaulted but never assumed —
+#
+# Check 8 had never run against a live CVM: the runner has had `--boot-reference` since 2026-08-08
+# and nothing passed one, so every run reported `boot_measurements skipped` and the committed
+# reference stayed *captured* rather than *checked*.
+#
+# Defaulted here, but **only when the reference describes the image actually deployed**. A reference
+# that silently describes a different platform is worse than none (the fixture's own comment says so):
+# it either refuses a genuine deployment — inviting the loosening ADR 0009 rule 3 forbids — or, worse,
+# keeps comparing equal because it pins only registers that do not move between versions. That second
+# failure is not hypothetical: MRTD and RTMR0 are **identical** across dstack 0.5.7 and 0.5.9, and
+# only RTMR1/RTMR2 distinguish them
+# (`records/experiments/2026-08-14-l04-with-channel-binding-and-the-mrtd-correction.md`).
+image="${DSTACK_IMAGE:-dstack-0.5.9}"
+boot_ref="${BOOT_REFERENCE:-}"
+if [ -z "$boot_ref" ]; then
+  candidate="$here/fixtures/boot-reference-dstack-$(echo "$image" | sed 's/^dstack-//').json"
+  if [ -r "$candidate" ]; then
+    ref_image=$(python3 -c "
+import json; print(json.load(open('$candidate')).get('os_image',''))" 2>/dev/null || echo "")
+    if [ "$ref_image" = "$image" ]; then
+      boot_ref="$candidate"
+      echo "  boot reference: $(basename "$boot_ref") (matches the deployed image)"
+    else
+      echo "  boot reference: NONE — $(basename "$candidate") describes '$ref_image', not '$image'"
+    fi
+  else
+    echo "  boot reference: NONE — no committed reference for '$image'."
+    echo "                  Check 8 will be skipped. Capture one from a deployment you have"
+    echo "                  independently satisfied yourself about; it cannot be derived."
+  fi
+fi
+
 say 3 "verifying against the compose the platform actually ran — every configuration check must pass"
 
 # Captured, and the exit code deliberately ignored — see the header. With no certificate to supply,
@@ -165,7 +198,7 @@ set +e
     --example verify-attestation --features attest -- \
     --attestation "$work/att.json" --compose "$work/compose.json" --image-digest "$digest" \
     --licensed-compose-hash "$licensed_hash" \
-    --os-image "${DSTACK_IMAGE:-dstack-0.5.9}" ${BOOT_REFERENCE:+--boot-reference "$BOOT_REFERENCE"}
+    --os-image "$image" ${boot_ref:+--boot-reference "$boot_ref"}
 } > "$work/control.txt" 2>&1
 set -e
 sed 's/^/    /' "$work/control.txt"
@@ -177,6 +210,25 @@ for check in compose_hash images_pinned licensed_image_present quote_signature t
     exit 1
   }
 done
+
+# Check 8, when a reference was resolved. Asserted rather than merely permitted: supplying a
+# reference and not checking the outcome would leave `boot_measurements` free to report FAILED while
+# the run stayed green, since it is not an essential and cannot sink `is_trustworthy()`.
+#
+# This is what turns the committed reference from *captured* into *checked*. Until 2026-08-14 it had
+# only ever been the former.
+if [ -n "$boot_ref" ]; then
+  grep -qE "^  boot_measurements +passed" "$work/control.txt" || {
+    echo "FAILED: boot_measurements did not pass against $(basename "$boot_ref")." >&2
+    echo "        Either the platform moved under the reference, or the reference describes a" >&2
+    echo "        different one. Do NOT drop the reference to make this green — re-capture it from" >&2
+    echo "        a deployment you have independently satisfied yourself about, and record why the" >&2
+    echo "        old one stopped matching. RTMR1/RTMR2 are the registers that move between guest" >&2
+    echo "        image versions; MRTD and RTMR0 do not." >&2
+    exit 1
+  }
+  echo "  boot_measurements passed — the committed reference is now checked, not just captured"
+fi
 
 # Not decoration. Per-check assertions can only see checks that are *there*, so without this the
 # rewrite would lose exactly the regression `unrun_essentials` exists to catch: a verifier that
