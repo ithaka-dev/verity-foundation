@@ -38,7 +38,27 @@ say 1 "reading the key fingerprint before"
 # separately as sha256("enc|" ‖ key). `public_logs` defaults to true and this output is a log.
 before_fp="$(require_probe KEYFP)"
 before_app_id="$(cvm_field app_id)"
-echo "  KEYFP=$before_fp  app_id=$before_app_id"
+# ADR 0029 / CR-2: the orchestrator's create-versus-upgrade decision is keyed on `instance_id`,
+# because that is what `bindInstance` records and what `LicenseToken.upgrade` carries forward while
+# the licence id changes. Nothing has ever measured that it is stable — every prior run of this
+# harness asserted `app_id` and key fingerprints only — and on 2026-08-09 `phala cvms get --json`
+# reported `"instance_id": null` on a *different* running CVM while RTMR3 carried a real value.
+#
+# Read with `cvm_field_top`, NOT `cvm_field`. The latter recurses and would answer a top-level
+# `"instance_id": null` with any nested field of the same name — which is precisely the payload shape
+# being tested for, so it would report success on the failure.
+before_instance_id="$(cvm_field_top instance_id)"
+case "$before_instance_id" in
+  UNREADABLE|ABSENT|NULL)
+    echo "FAILED: the platform did not report a top-level instance_id (got: $before_instance_id)." >&2
+    echo "  This is the 2026-08-09 observation reproduced. ADR 0024 records the licence binding on" >&2
+    echo "  this value and ADR 0029 makes the orchestrator's create-versus-upgrade decision turn on" >&2
+    echo "  it. If the platform will not name it, an adapter cannot confirm the instance the chain" >&2
+    echo "  binds, and every redemption of that licence must refuse rather than create." >&2
+    exit 1
+    ;;
+esac
+echo "  KEYFP=$before_fp  app_id=$before_app_id  instance_id=$before_instance_id"
 
 # The seal must already be readable, or step 4 proves nothing about the restart.
 before_unseal="$(require_probe UNSEAL)"
@@ -77,6 +97,29 @@ if [ "$before_app_id" != "$after_app_id" ]; then
   exit 1
 fi
 
+say 7 "instance_id must be present and unchanged — it is what the on-chain binding names"
+# Nothing skips: an assertion that passed quietly when the platform returned nothing would be
+# another job that did not run, and absent is exactly the case the 2026-08-09 lead raises. So the
+# sentinels are checked again after the restart rather than only before it.
+after_instance_id="$(cvm_field_top instance_id)"
+case "$after_instance_id" in
+  UNREADABLE|ABSENT|NULL)
+    echo "FAILED: the platform stopped reporting a top-level instance_id across the restart" >&2
+    echo "  (got: $after_instance_id, was: $before_instance_id). The on-chain binding still names" >&2
+    echo "  the old value and nothing can now confirm it (ADR 0024, ADR 0029)." >&2
+    exit 1
+    ;;
+esac
+if [ "$before_instance_id" != "$after_instance_id" ]; then
+  echo "FAILED: instance_id changed across a restart ($before_instance_id -> $after_instance_id)." \
+       "The on-chain binding now names an instance that no longer exists, and every subsequent" \
+       "redemption of that licence will refuse — permanently (ADR 0024, ADR 0029)." >&2
+  exit 1
+fi
+
 echo
 echo "Key stability confirmed across restart: KEYFP, seal and disk all survived."
+echo "instance_id was reported at the top level and was stable across the restart."
 echo "This says NOTHING about upgrade — run 03."
+echo "It also says nothing about whether the CLI RESOLVES an instance_id: ADR 0029 records that as"
+echo "documented-but-unmeasured, and nothing here passes one to \`phala cvms get\`."

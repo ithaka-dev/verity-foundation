@@ -259,6 +259,13 @@ CVM-co-signed claims with Phala (would remove the mempool window entirely).
 - The endpoint-withholding sequencing writes nothing on chain and reads only `instanceOf` at a stated
   depth.
 - `policy.rs` documents "provably empty, provably orphaned" as the one CVM class safe to destroy.
+- **That definition is also what unsticks CR-2's accepted dead-end**, so it must cover the case where
+  chain binds `I` and the platform no longer produces it. Today every redemption of such a licence
+  refuses forever: rebinding needs a fresh instance, a fresh instance needs a redemption, and the
+  redemption is what refuses (`DeployError::WouldDestroyState`; MA-5 item 6 makes it visible). A
+  recovery path is a *deliberate holder-initiated act* on an instance provably holding nothing — not
+  a relaxation of the refusal, and not something the orchestrator may decide for itself, since that
+  is the discretion §2.8 exists to keep out of it.
 
 **Tests (at the gate):** Foundry test — front-run attempt against a committed binding reverts;
 reveal after delay succeeds; reveal without matching commit reverts.
@@ -329,6 +336,24 @@ the `health` probe is unimplemented; two critical alerts link to 404 runbooks (r
 5. Encode the agreed `NeedsHolderAction` contract: **terminal for the agent** — stop, touch nothing,
    return control; old version keeps running; window bounded by the authorization `expiry`; resume is
    human-initiated via persist-once-and-notify; **no agent polling.**
+6. **Surface `WouldDestroyState` as an operator-visible condition — the limit CR-2 knowingly
+   accepted.** Once chain binds instance `I` and the platform stops producing it (deleted, expired,
+   lost), *every* redemption of that licence refuses, permanently: `bindInstance` permits rebinding
+   to a **fresh** instance (`LicenseToken.sol:279-292`), but obtaining one requires a redemption, and
+   the redemption is what refuses. The holder is stuck with no signal.
+
+   CR-2 accepted this deliberately and it was reviewed as not gating that merge — it is not CR-2's
+   condition (before CR-2 the same holder got a silent *fresh deploy*, which is strictly worse), and
+   the asymmetry runs the right way: irreversible loss prevented, recoverable stuck-ness created.
+   But it is currently documented **only** in a doc comment on `DeployError::WouldDestroyState`, and
+   a limit whose only record is a doc comment is a limit nobody is tracking.
+
+   Scope for MA-5 is **telemetry only** — emit `verity_redemption_refused_total{reason}` and a row
+   carrying `(license, instance_id, binding)` so the condition is visible and countable. **Do not
+   build the recovery path here.** Recovery needs a definition of "provably empty, provably orphaned"
+   which is **MA-3**'s, and inventing one inside the orchestrator is exactly the discretion the
+   orchestrator boundary excludes — getting it wrong reconstructs I9 with a guard's blessing.
+   **Never resolve this by loosening the refusal.**
 
 **Acceptance criteria:**
 - Every alert in `alerts.yaml` links to a file that exists.
@@ -336,6 +361,8 @@ the `health` probe is unimplemented; two critical alerts link to 404 runbooks (r
 - `NeedsHolderAction` produces exactly one persisted row and one telemetry event; no polling loop
   exists in the agent path.
 - `health` is probed on the path the lifecycle RFC's corroboration requires.
+- A `WouldDestroyState` refusal is countable and attributable to a `(license, instance_id, binding)`
+  triple, and the refusal itself is unchanged — the acceptance test asserts the crate still refuses.
 
 **Tests:**
 - `relay.rs` test: `NeedsHolderAction` → one row persisted, one counter incremented; a simulated

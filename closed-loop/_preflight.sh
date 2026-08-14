@@ -23,6 +23,20 @@ fail() { printf '\nPREFLIGHT FAILED: %s\n' "$1" >&2; exit 2; }
 
 command -v phala >/dev/null 2>&1 || fail "the phala CLI is not on PATH"
 
+# `python3` is not optional here: both `cvm_field` and `cvm_field_top` pipe through it, and both
+# degrade to a sentinel when it is missing. That degradation is **indistinguishable from a platform
+# fault at the call site** — with a healthy platform reporting a good value, a missing `python3`
+# yields `UNREADABLE` and `02` prints "the platform did not report a top-level instance_id … This is
+# the 2026-08-09 observation reproduced."
+#
+# A local toolchain gap attributed to the platform, manufacturing a reproduction of the very lead
+# the assertion exists to detect. Checked here, before anything is deployed, because that is the
+# lesson `08` paid a CVM for: preflight must cover every external command a script uses, including
+# the ones buried inside helpers.
+command -v python3 >/dev/null 2>&1 \
+  || fail "python3 is not on PATH — every field read here pipes through it, and without it a healthy
+                 platform reads as a missing instance_id"
+
 phala cvms --help >/dev/null 2>&1 || fail "\`phala cvms\` not available — the CLI surface has moved again"
 phala deploy --help >/dev/null 2>&1 || fail "\`phala deploy\` not available"
 phala logs --help >/dev/null 2>&1 || fail "\`phala logs\` not available"
@@ -94,7 +108,53 @@ await_probe() {
   done
 }
 
+# The same read restricted to the TOP LEVEL, distinguishing "present and null" from "absent".
+#
+# `cvm_field` below recurses the whole document and skips null/'' at every level, returning the first
+# non-empty match anywhere. That leniency is harmless for `app_id`. It is fatal for `instance_id`,
+# because a payload shaped `{"instance_id": null, "vm_config": {"instance_id": "..."}}` — the exact
+# 2026-08-09 observation — passes `cvm_field` by answering with a *different* field of the same name.
+# An assertion cannot use a helper that can be satisfied by something other than the thing it is
+# asserting about.
+#
+# Prints one of `UNREADABLE`, `ABSENT`, `NULL`, or the value, and always exits 0 — the caller writes
+# the diagnosis, because a generic "could not read the field" is exactly the message that would bury
+# this. (No collision risk: `phala` renders these ids as hex or a UUID.)
+cvm_field_top() {
+  local field="$1" out
+  # Captured, normalised once, printed once — and the `||` deliberately does **not** print.
+  #
+  # It used to. Under `set -o pipefail` a non-zero exit from `phala` propagates even though the
+  # Python branch has already printed its own `UNREADABLE` and exited 0, so the `||` appended a
+  # *second* token: the helper returned `UNREADABLE\nUNREADABLE`, or `abc123\nUNREADABLE` when
+  # `phala` printed JSON and then failed. Neither matches the callers' whole-string
+  # `case … UNREADABLE|ABSENT|NULL)`, so both reads came back equal and non-sentinel, the
+  # before/after comparison passed, and `02` printed that instance_id was stable across the
+  # restart — having measured nothing.
+  #
+  # That is the failure `require_probe` is documented against sixty lines below ("Both reads would
+  # then agree, and the run would report continuity it never measured"), reintroduced in a new
+  # shape by the helper added to catch a *different* silent read.
+  out="$(
+    phala cvms get "$VERITY_CVM_ID" --json 2>/dev/null \
+      | python3 -c "
+import json,sys
+try: d = json.load(sys.stdin)
+except Exception: print('UNREADABLE'); sys.exit(0)
+if not isinstance(d, dict) or '$field' not in d: print('ABSENT'); sys.exit(0)
+v = d['$field']
+print('NULL' if v is None or v == '' else v)
+" 2>/dev/null
+  )" || out=""
+  # Empty covers python3 being absent, the pipeline dying, and any path that printed nothing.
+  # One token out, always.
+  printf '%s' "${out%%$'\n'*}" | { read -r first || true; printf '%s' "${first:-UNREADABLE}"; }
+}
+
 # A required field from `phala cvms get --json`, failing loudly rather than yielding "undefined".
+#
+# Recurses, and skips null/'' at every level. See `cvm_field_top` above for when that is not good
+# enough — any assertion whose subject is the *absence* of a value needs the strict reader.
 cvm_field() {
   local field="$1" value
   value="$(phala cvms get "$VERITY_CVM_ID" --json 2>/dev/null \
