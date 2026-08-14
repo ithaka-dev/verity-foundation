@@ -37,12 +37,20 @@ must be updated to point at it. Silence is how decisions get relitigated by acci
 | [0013](0013-create-sibling-repos.md) | Create the sibling repositories now | accepted |
 | [0014](0014-verifier-update-discipline.md) | Verifier update discipline | accepted |
 | [0015](0015-adopt-sops-nix.md) | Adopt sops-nix for operator secrets | accepted |
-| [0016](0016-adopt-chainsafe-handbook.md) | Adopt the ChainSafe Engineering Handbook | superseded by 0021 |
+| [0016](0016-adopt-chainsafe-handbook.md) | Adopt the ChainSafe Engineering Handbook | superseded by [0025](0025-vendor-engineering-practice-locally.md) |
 | [0017](0017-agpl-for-all-verity-repositories.md) | AGPL-3.0 for all Verity repositories | accepted |
 | [0018](0018-reviewer-signoff-is-a-gate.md) | Reviewer sign-off is a gate | accepted |
-| [0019](0019-defer-oneflow-until-first-release.md) | Pause OneFlow until further notice (paused, not cancelled) | accepted |
+| [0019](0019-defer-oneflow-until-first-release.md) | Defer OneFlow until the first release (**paused**, not cancelled) | accepted |
 | [0020](0020-mvp-tool-is-pandoc.md) | The MVP tool wraps Pandoc | accepted |
-| [0021](0025-vendor-engineering-practice-locally.md) | Engineering practice is vendored locally | accepted |
+| [0021](0021-app-manifest-deployment-is-unmediated.md) | AppManifest deployment is unmediated; the factory is a convenience | accepted |
+| [0022](0022-economic-terms-are-signed-not-read-late.md) | Economic terms are signed, not read at execution time | accepted |
+| [0023](0023-licences-are-per-unit.md) | Licences are per-unit, and an instance binds to one | accepted |
+| [0024](0024-instance-binding-is-on-chain.md) | The licence↔instance binding is on chain, claimed by the holder | accepted |
+| [0025](0025-vendor-engineering-practice-locally.md) | Engineering practice is vendored locally | accepted |
+| [0026](0026-language-issues-are-implemented-by-their-team.md) | Language issues are implemented by their language team | accepted |
+| [0027](0027-channel-binding-is-an-essential-check.md) | Channel binding is an essential verification check | accepted — amended by [0028](0028-channel-binding-requires-proof-of-possession.md) |
+| [0028](0028-channel-binding-requires-proof-of-possession.md) | Channel binding requires proof of possession, not just a matching certificate | accepted |
+| [0029](0029-three-identities-instance-app-cvm.md) | Three identities: `instance_id` is recorded, `app_id` is its consequence, `cvm_id` is the target | accepted |
 
 Add a row when you add an ADR.
 
