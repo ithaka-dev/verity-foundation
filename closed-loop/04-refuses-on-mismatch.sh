@@ -120,9 +120,22 @@ import hashlib
 print(hashlib.sha256(open('$work/compose.json','rb').read()).hexdigest())")
 echo "  licensed compose hash (captured before tampering): $licensed_hash"
 # `mrtd`, not `os_image_hash` — the attestation carries no such field. `tcb_info` holds
-# mrtd / rootfs_hash / rtmr0-3 / event_log / app_compose, and MRTD *is* the OS image measurement.
-# Recorded so a run's platform version is identifiable afterwards from the evidence rather than
-# from what the operator believes they pinned.
+# mrtd / rootfs_hash / rtmr0-3 / event_log / app_compose.
+#
+# **MRTD does not identify the OS image**, and this comment said it did until 2026-08-14. Measured:
+# dstack 0.5.7 and 0.5.9 produce the *same* MRTD and the same RTMR0; only RTMR1 and RTMR2 differ.
+# Controlled for the application — two different apps on 0.5.9, a day apart, gave all four registers
+# identical — so RTMR1/RTMR2 are version-determined, and MRTD is the measurement of the TD's initial
+# state (the virtual firmware), which did not change between these guest images.
+#
+# So a boot reference pinning only MRTD would accept 0.5.7 and 0.5.9 interchangeably: a version guard
+# that cannot detect a version change. Every `BootReference` field is `Option`, so that reference is
+# constructible today and would look correct. **RTMR1 and RTMR2 are what make check 8 a version
+# check.** See `records/experiments/2026-08-14-l04-with-channel-binding-and-the-mrtd-correction.md`.
+#
+# MRTD is still recorded here — it pins the firmware, and a run's evidence should identify its own
+# platform rather than relying on what the operator believes they pinned. It is simply not sufficient
+# on its own.
 mrtd=$(python3 -c "
 import json
 d=json.load(open('$work/att.json'))

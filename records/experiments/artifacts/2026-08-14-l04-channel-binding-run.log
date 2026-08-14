@@ -1,0 +1,75 @@
+
+[1] deploying a CVM with a digest-pinned public image
+  8161c36b-5c5d-46e4-be26-72fb6d14b560
+
+[2] waiting for attestation
+  image: sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10
+  licensed compose hash (captured before tampering): e9f1a3f4314f715382a059fa0de563996f776d7d6ce14e1677caae7260dd12a6
+  mrtd: f06dfda6dce1cf904d4e2bab1dc370634cf95cefa2ceb2de2eee127c9382698090d7a4a13e14c536ec6c9c3c8fa87077
+  os image pinned at deploy: dstack-0.5.9
+
+[3] verifying against the compose the platform actually ran — every configuration check must pass
+    note: --licensed-compose-hash below was computed by this script from the very document
+          under test, because 04 has no AppManifest to consult. So check 1 in THIS step
+          compares the document against itself and establishes nothing; mr_config_id is the
+          check comparing against the hardware here. Step 4 reuses the same hash against a
+          *different*, tampered document, where it is a real refusal.
+    quote:          5010 bytes
+    compose:        18380 bytes
+    licensed hash:  e9f1a3f4314f715382a059fa0de563996f776d7d6ce14e1677caae7260dd12a6
+    os image:       dstack-0.5.9 (hash bd369a8c2f9edb2b52dad48ac8e0b32dde5f1337c423a506b48d07403a7d8033)
+    
+    channel binding: NOT ATTEMPTED — no --leaf-cert supplied; this run cannot establish what you are talking to.
+    
+    checks performed:
+      compose_hash           passed
+      images_pinned          passed
+      licensed_image_present passed
+      quote_signature        passed
+      tcb_status             passed
+      mr_config_id           passed
+      boot_measurements      skipped (no OS image reference supplied)
+      channel_bound          skipped (no connection was made: this verdict is about recorded evidence, not about an endpoint)
+    
+    measured boot registers (a reference is captured, never derived):
+      mrtd   f06dfda6dce1cf904d4e2bab1dc370634cf95cefa2ceb2de2eee127c9382698090d7a4a13e14c536ec6c9c3c8fa87077
+      rtmr0  68102e7b524af310f7b7d426ce75481e36c40f5d513a9009c046e9d37e31551f0134d954b496a3357fd61d03f07ffe96
+      rtmr1  07e6f51aa763abfe75c3ddfbf4f425fe3f0ceff66d807a75e049303dce9addf68e7218729bd419638af63a370f65878c
+      rtmr2  df67e467e60edc1737bcf8e682d48131bfb427f523226aa7f197a7608e9b3784783fa759ef5b28191fa12f9ddb36b858
+    
+    REFUSED
+  six configuration essentials passed; channel_bound correctly skipped
+  (compose_hash here is weak by construction — see the licensed_hash comment above;
+   mr_config_id is what compares against the hardware in this step)
+
+[4] verifying against the same compose with ONE byte added — must REFUSE
+    quote:          5010 bytes
+    compose:        18381 bytes
+    licensed hash:  e9f1a3f4314f715382a059fa0de563996f776d7d6ce14e1677caae7260dd12a6
+    
+    channel binding: NOT ATTEMPTED — no --leaf-cert supplied; this run cannot establish what you are talking to.
+    
+    checks performed:
+      compose_hash           FAILED (compose hash mismatch: licensed e9f1a3f4314f715382a059fa0de563996f776d7d6ce14e1677caae7260dd12a6, served 73f6123d9105cdff13cc5391f9c18b31bc4349e8900443f2230ae1fc059edeb5)
+      images_pinned          skipped (compose hash did not match, so its contents were not examined)
+      licensed_image_present skipped (compose hash did not match, so its contents were not examined)
+      quote_signature        passed
+      tcb_status             passed
+      mr_config_id           passed
+      boot_measurements      skipped (no OS image reference supplied)
+      channel_bound          skipped (no connection was made: this verdict is about recorded evidence, not about an endpoint)
+    
+    measured boot registers (a reference is captured, never derived):
+      mrtd   f06dfda6dce1cf904d4e2bab1dc370634cf95cefa2ceb2de2eee127c9382698090d7a4a13e14c536ec6c9c3c8fa87077
+      rtmr0  68102e7b524af310f7b7d426ce75481e36c40f5d513a9009c046e9d37e31551f0134d954b496a3357fd61d03f07ffe96
+      rtmr1  07e6f51aa763abfe75c3ddfbf4f425fe3f0ceff66d807a75e049303dce9addf68e7218729bd419638af63a370f65878c
+      rtmr2  df67e467e60edc1737bcf8e682d48131bfb427f523226aa7f197a7608e9b3784783fa759ef5b28191fa12f9ddb36b858
+    
+    REFUSED
+
+[5] both directions confirmed
+  every configuration check passed on the licensed configuration,
+  and compose_hash alone FAILED on a one-byte change, with mr_config_id still passing.
+  The refusal is the property. An accept-only run would have proved nothing.
+
+tearing down 8161c36b-5c5d-46e4-be26-72fb6d14b560

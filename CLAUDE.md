@@ -147,9 +147,28 @@ Keys also survive a restart, which nothing had tested before.
 image (`phala os-images` — 0.5.8/0.5.9 offered; 0.5.7 gone), and dstack's own components (its
 `verifier` is at 0.5.11 upstream) move independently. Collapsing them is how this note briefly
 claimed a platform re-verification that had not happened —
-see [the correction](records/experiments/2026-08-08-correction-guest-image-is-not-the-node-version.md). **Re-verify on any further version bump**;
-the failure mode is silent data loss, and the harness now exists to make that a command rather than a
-project. 0.5.8 is offered and unexamined.
+see [the correction](records/experiments/2026-08-08-correction-guest-image-is-not-the-node-version.md).
+0.5.8 is offered and unexamined.
+
+**Every version bump re-tests three independent properties. A bump is not "re-run L-03 and move on."**
+([record](records/experiments/2026-08-14-l04-with-channel-binding-and-the-mrtd-correction.md))
+
+| Property | What moves | Harness | If skipped |
+|---|---|---|---|
+| **State continuity** | `app_id`, SDK-derived keys | `02`, `03` | **Silent data loss** — working instance, empty state, no error (ADR 0008) |
+| **Boot measurements** | RTMR1, RTMR2 — **not** MRTD, **not** RTMR0 | capture a fresh `BootReference`; run `04` with `BOOT_REFERENCE` | A guard that stops distinguishing versions, or spurious refusals that invite loosening |
+| **Channel binding** | the RA-TLS tag and hash, carried in a **versioned** attestation | `08`, then `06` | Every genuine certificate refused, looking exactly like an attack ([ADR 0027](docs/decisions/0027-channel-binding-is-an-essential-check.md)) |
+
+**`MRTD` does not identify the OS image.** Measured 2026-08-14: dstack 0.5.7 and 0.5.9 produce the
+*same* MRTD and RTMR0; only RTMR1 and RTMR2 differ — and two different apps on 0.5.9 gave all four
+identical, so RTMR1/RTMR2 are version-determined rather than per-deployment. MRTD measures the TD's
+initial state (the virtual firmware), which did not change between these images. A boot reference
+pinning only MRTD accepts both versions interchangeably: a version guard that cannot detect a version
+change. Earlier records say otherwise and are superseded, not edited.
+
+Two of the three fail *closed* and are merely expensive. **State continuity fails open and silently**,
+which is why ADR 0008 demands re-verification — and boot measurements are the newly dangerous member,
+because a reference that only pins registers which never move keeps comparing equal forever.
 
 > **The orchestrator has still never run against real dStack.** It is the component that chooses
 > upgrade-versus-deploy, and `phala deploy` creates a *new* CVM without `--cvm-id` and updates in place
