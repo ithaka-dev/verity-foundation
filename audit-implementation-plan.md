@@ -1,6 +1,8 @@
 # Audit implementation plan — 2026-08-09 system-design review
 
-**Status:** active
+**Status:** active — CR-1, CR-2, MA-1, MA-2, MA-7 and MA-8 are landed; see each issue's
+commit for the findings and accepted limits. Three issues found while implementing are
+recorded under **FI**, and **MA-12** was split out of CR-2.
 **Source review:** [`records/reviews/2026-08-09-system-design-review.md`](records/reviews/2026-08-09-system-design-review.md)
 **Reviewed commit:** `7c26cd4` (verity-foundation) + sibling HEADs of 2026-08-09
 **Scope:** every finding the panel agreed on — 2 Critical, 11 Major, 7 Minor.
@@ -59,6 +61,14 @@ Phase 5 (operational substrate + honest docs; cheap, do alongside)
   MA-5  telemetry + persistence + runbooks + health probe
   MA-9  §2.8 exit preconditions        MA-10 L-06 + §2.6 amend        MA-11 registry-outage restatement
   MI-5  file-backed compose cache      MI-6  capability-claim purchase guidance
+
+Found while implementing (see the FI section; not from the review)
+  FI-1  testnet-only gate misses mainnet   [ADR 0002 condition — do not let this sit]
+  FI-2  Slither runs nowhere               (Phase 3, with the contract work)
+  FI-3  LicenseHandler size ceiling        (blocks further invariant actors)
+
+  MA-12 passthrough endpoint on Redemption (split out of CR-2; the last unchecked
+        platform self-report on the redemption path)
 ```
 
 ---
@@ -576,6 +586,105 @@ Folded into MA-4 artifacts — reconcile RFC/`CLAUDE.md` prose with the post-ADR
       service, and [ADR 0031](docs/decisions/0031-purchase-idempotency-is-chain-derived.md) carries
       the requirement regardless — see its "Carried to the ERC-7710 replacement" section, which names
       the four things that must be re-derived on a rail with no EIP-3009 nonce.
+
+## MA-12 — The endpoint an agent is handed must be channel-bindable
+
+**Split out of CR-2 during design, not from the review.**
+
+**Repo / files:** `verity-orchestrator/src/{deploy,redeem}.rs` — specifically `Instance.endpoint` and
+`Redemption.endpoint`.
+**Problem:** dStack's gateway terminates TLS on `<app_id>-<port>.<domain>` and passes through only on
+`<app_id>-<port>s.<domain>`. On the terminating form the client is handed a **valid Let's Encrypt
+certificate for the gateway**, so ordinary TLS verification succeeds while the peer is not the
+enclave — and channel binding is impossible. **The platform's own API advertises the terminating
+form** in `endpoints[0].app`, so an orchestrator returning what the API reports hands every agent a
+connection it cannot verify. Measured on hardware:
+[record](records/experiments/2026-08-14-channel-binding-end-to-end-on-live-hardware.md),
+[ADR 0027](docs/decisions/0027-channel-binding-is-an-essential-check.md).
+
+**Why it was split rather than folded into CR-2:** `verity-orchestrator/src/` contains **no `Platform`
+implementation at all** — the trait's only implementor is a test fake. A check added now would guard
+a boundary nothing crosses, which is the "gate that has never been fed a real input" shape this
+project has shipped four of in a week. It lands with the adapter.
+
+**It is also the last open member of a class.** CR-2's review established the rule *lookup-by-identity
+does not establish identity*: any value crossing a trait boundary this crate does not own is a
+candidate, not a confirmation. `Instance.endpoint` is the final platform self-report on the
+redemption path with a derivable counterpart (`<app_id>-<port>s.<domain>`) that nothing compares it
+against.
+
+**Change:** construct the passthrough form rather than forwarding what the platform advertises, and
+refuse — or at minimum refuse to return — an endpoint that cannot be channel-bound.
+**Acceptance:** a redemption never returns a terminating-form endpoint; a platform reporting one is a
+refusal, not a pass-through.
+**Note:** `verity-verifier` already refuses the terminating form **before opening a socket**, with
+`RefusalKind::EndpointUnusable` naming the passthrough form as the fix. So until this lands, the
+failure is loud and correctly attributed — which is the good outcome, not a reason to defer
+indefinitely.
+
+---
+
+# Found while implementing — not from the 2026-08-09 review
+
+These were turned up by the work on CR-1, CR-2, MA-2 and MA-7 rather than by the panel. They are
+recorded here because they otherwise live only in commit messages, which is the wrong place for an
+open issue. Numbered `FI-n` so they cannot be confused with the review's own findings.
+
+## FI-1 — The `testnet-only` CI gate does not catch mainnet [ADR 0002 CONDITION]
+
+**Repo / files:** `verity-payments/.github/workflows/ci.yml` (the `no mainnet chain ids` job).
+**Problem:** the gate greps for the string `mainnet`. `import {base} from 'viem/chains'` contains no
+such string and passes, as do `optimism`, `arbitrum` and `polygon`. Most of its exclusion list is
+inert besides — `chainId: 11155111` never matches `chainId:\s*1\b` in the first place, so excluding
+it excludes nothing.
+
+**Why this outranks its size.** [ADR 0002](docs/decisions/0002-defer-account-abstraction.md)'s first
+binding condition is *testnet only, no real value, at any point*, and that condition is what makes
+shipping with **no spend envelope** acceptable (§2.7, I2). This job is the enforcement. It has been
+resting on a pattern that the most natural way to write the bug walks straight past.
+
+**Interim cover:** MA-2 added a runtime `NotATestnetError` deriving from `viem`'s `chain.testnet`
+flag, verified to discriminate correctly (`baseSepolia`/`sepolia` → `true`; `base`/`mainnet`/
+`arbitrum` → `undefined`). **That check is currently the only thing catching `chain: base`**, and it
+covers `verity-payments` alone.
+
+**Change:** discriminate on chain **identity**, not on a substring — an allow-list of permitted chain
+ids, or the `testnet` flag, checked in CI rather than only at runtime. Extend to every repo that
+names a chain.
+**Acceptance:** a commit introducing `import {base}` fails CI. Demonstrated failing before trusted.
+**Gate:** this is an ADR 0002 condition; treat a gap here as blocking for any real-value discussion.
+
+## FI-2 — Slither runs nowhere
+
+**Repo / files:** `verity-contracts/.github/workflows/ci.yml`.
+**Problem:** the audit-readiness checklist expects Slither clean or muted with reasons. It is absent
+from CI and was not installed on the review machine, so MA-7's reviewer could report **neither clean
+nor dirty** — an unrun gate reported honestly as unrun.
+**Change:** add Slither to CI with a triage pass; mute with written reasons rather than lowering
+severity. Expect the first run to surface pre-existing findings — budget for triage, not for a green
+first run.
+**Acceptance:** the job runs on every push and its findings are either zero or individually muted
+with a reason in-repo.
+**Gate:** Solidity security, HARD FAIL tier.
+
+## FI-3 — `LicenseHandler` is 270 bytes from the EIP-170 ceiling
+
+**Repo / files:** `verity-contracts/test/invariant/LicenseHandler.sol`, `test/invariant/ManifestGuards.sol`.
+**Problem:** the invariant handler was at **24,306 of 24,576 bytes** after MA-7, and had only 842
+bytes of headroom *before* it. The next actor or action hits the wall. MA-7 recovered 2,817 bytes by
+extracting `ManifestGuards`, and measured that micro-optimisation is counter-productive (forcing a
+call boundary on signing *cost* 511 bytes).
+**Explicitly rejected during MA-7:** scoping `forge build --sizes` away from tests. EIP-170 does not
+apply to a never-deployed harness, so the gate would arguably be measuring nothing — but relaxing a
+gate to unblock its own author is how this project has lost gates before, and the exemption would
+apply to every future harness silently.
+**Change:** split actions from guards into separate contracts, so the handler can keep growing.
+**Acceptance:** adding an actor and an action requires no size surgery.
+**Why it matters:** MA-7 established that the invariant suite's blind spots are *structural* — it had
+no reentrant actor at all. Closing those blind spots means adding actors, which is exactly what this
+ceiling blocks.
+
+---
 
 # Verification discipline (CLAUDE.md — non-negotiable)
 
