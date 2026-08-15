@@ -51,6 +51,7 @@ must be updated to point at it. Silence is how decisions get relitigated by acci
 | [0027](0027-channel-binding-is-an-essential-check.md) | Channel binding is an essential verification check | accepted — amended by [0028](0028-channel-binding-requires-proof-of-possession.md) |
 | [0028](0028-channel-binding-requires-proof-of-possession.md) | Channel binding requires proof of possession, not just a matching certificate | accepted |
 | [0029](0029-three-identities-instance-app-cvm.md) | Three identities: `instance_id` is recorded, `app_id` is its consequence, `cvm_id` is the target | accepted |
+| [0030](0030-deploy-trigger-is-redeem-only.md) | The deploy trigger is redemption only, never an event watcher | accepted |
 
 Add a row when you add an ADR.
 

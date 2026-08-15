@@ -44,7 +44,7 @@ graph TB
 
     subgraph svc["Services — convenience, never authority"]
         P["verity-payments<br/><i>x402 → signed mint authorization</i>"]
-        O["verity-orchestrator<br/><i>watches licence, deploys</i>"]
+        O["verity-orchestrator<br/><i>redeems on request, deploys</i>"]
     end
 
     subgraph tee["Phala dStack — Intel TDX"]
@@ -57,14 +57,15 @@ graph TB
     A -->|"1 pay"| P
     P -->|"2 signed authorization"| A
     A -->|"3 mint"| LT
-    O -->|"4 watches licence state"| LT
-    O -->|"5 resolves licensed digest"| AM
-    O -->|"6 deploys"| CVM
-    O -->|"7 passthrough endpoint + evidence"| A
-    V -->|"8 fetch compose"| IPFS
-    V -->|"9 fetch collateral"| INTEL
-    V -->|"10 verdict"| A
-    A -->|"11 use, only if trustworthy"| CVM
+    A -->|"4 redeem"| O
+    O -->|"5 reads licence + binding"| LT
+    O -->|"6 resolves licensed digest"| AM
+    O -->|"7 creates, or upgrades in place"| CVM
+    O -->|"8 passthrough endpoint + evidence"| A
+    V -->|"9 fetch compose"| IPFS
+    V -->|"10 fetch collateral"| INTEL
+    V -->|"11 verdict"| A
+    A -->|"12 use, only if trustworthy"| CVM
     CVM -.->|"RA-TLS cert carries the raw quote,<br/>and report_data commits to its key"| V
 
     classDef built fill:#1f6f43,stroke:#0d3a23,color:#fff
@@ -117,15 +118,21 @@ sequenceDiagram
     Note over C: one licence = one entitlement<br/>(ADR 0023, per-unit ids)
     C-->>A: licenseId
 
-    A->>C: bindInstance(licenseId, instanceId)
-    Note over C: holder-claimed, write-once<br/>(ADR 0024)
-
-    O->>C: watch licence state
+    A->>O: redeem(licenseId)
+    Note over A,O: pull, not push. Nothing watches the chain —<br/>a redemption happens because someone asked (ADR 0030)
+    rect rgb(60, 50, 30)
+    Note over O,D: UNBUILT — `ChainReader` and `Platform` are traits whose only<br/>implementations are test fakes. The decision is built and tested;<br/>the adapters on either side of it are not. This band is design.
+    O->>C: license(id) + instanceOf(licenseId)
+    Note over O: the *binding* decides create vs upgrade, never the<br/>licence id — that changes at upgrade, and keying on it<br/>is how a fresh deploy silently replaces a volume (ADR 0029)
     O->>C: AppManifest.versionRecord(licensed version)
     Note over O: the digest bound to the holder's licence —<br/>never the newest entry (ADR 0003)
-    O->>D: deploy app-compose.json
-    D-->>O: app_id, cvm_id, endpoint
-    O-->>A: endpoint + attestation evidence
+    O->>D: create — or upgrade in place, if bound
+    D-->>O: app_id, cvm_id, instance_id, endpoint
+    O-->>A: endpoint + attestation evidence + instance_id
+    end
+
+    A->>C: bindInstance(licenseId, instanceId)
+    Note over A,C: holder-claimed, write-once (ADR 0024), and it comes<br/>*after* the first redemption because the instance_id<br/>is what redemption returns
     Note over O,A: the endpoint must be the TLS-passthrough form<br/>(appId-PORTs.domain — note the trailing s) or the agent's<br/>TLS peer is the gateway and nothing can be<br/>channel-bound (ADR 0027)
 
     A->>V: verify(endpoint, evidence + leaf cert, licensed)
@@ -241,8 +248,20 @@ passes and the guarantee is gone.
 
 ## 4. Upgrade and migration
 
-Two separate holder acts, deliberately. **Minting is not consent to migrate** (invariant I10): a
-holder may want the new version without their running instance being touched.
+Three steps, and **two of them are decisions the holder makes separately, on purpose**. Minting is
+not consent to migrate (invariant I10): a holder may want the new version without their running
+instance being touched, and may stop after Act 1 indefinitely.
+
+**Acts 2 and 3 are not the same thing, and conflating them is the mistake this section exists to
+prevent.** Act 2 moves the *code*: the CVM is upgraded in place and the encrypted volume comes along
+untouched, because the volume follows `app_id` and `app_id` survives. Act 3 transforms the *data*,
+and most apps need nothing there — ADR 0008's phrasing is that `migrate` exists to transform data,
+not to move it. An app that treats the upgrade as its cue to migrate has implemented the
+automigration I10 forbids.
+
+**Ordering constraint:** a `migrate` call is accepted only once the instance is running `toDigest`.
+Act 3 before Act 2 asks the *old* code to perform the new version's migration, which is at best a
+no-op and at worst a corruption the attestation would have no reason to flag.
 
 ```mermaid
 sequenceDiagram
@@ -257,7 +276,17 @@ sequenceDiagram
     Note over C: burn + mint atomically.<br/>No two-instance window,<br/>so §2.9 needs no exemption.
     C-->>H: new licenseId, instance binding carried forward
 
-    Note over H,APP: Act 2 — and only if the holder asks
+    Note over H,O: Act 2 — the CVM is moved to the new digest
+    rect rgb(60, 50, 30)
+    Note over O,APP: UNBUILT — no platform adapter exists, so nothing<br/>in this band has ever executed against dStack (see §6)
+    H->>O: redeem(newLicenseId)
+    O->>C: instanceOf(newLicenseId)
+    Note over C,O: the binding was carried forward by upgrade,<br/>so this resolves — and the orchestrator upgrades<br/>rather than creates (ADR 0029)
+    O->>APP: phala deploy --cvm-id (in place)
+    Note over APP: app_id, instance_id and the encrypted<br/>volume all survive. Without --cvm-id this is a<br/>fresh CVM and the volume is gone (ADR 0008)
+    end
+
+    Note over H,APP: Act 3 — and only if the holder asks
     H->>H: sign EIP-712 MigrationAuthorization
     H->>O: hand it over
     O->>APP: relay it, unaltered
@@ -291,7 +320,7 @@ until somebody looks, and nobody looks.
 | `AppManifest` + factory | §4.1 | `verity-contracts` | Solidity | **deployed** (Sepolia) | not yet written |
 | Session-key policy (ERC-4337) | §4.1, §2.7 | `verity-contracts` | Solidity | deferred — ADR 0002 | — |
 | x402 → mint authorization | §4.2 | `verity-payments` | TypeScript | built, **designated throwaway** | not yet written |
-| Orchestrator | §4.3, §2.8 | `verity-orchestrator` | Rust | built, not deployed | not yet written |
+| Orchestrator | §4.3, §2.8 | `verity-orchestrator` | Rust | **decision logic built and tested; no adapters** — `ChainReader` and `Platform` have no implementation outside test fakes | not yet written |
 | Confidential execution | §4.4 | — (nodes **v0.5.7**, guest image 0.5.9) | — | **verified on real TDX** 2026-08-08 | not yet written |
 | Agent-side verifier | §4.5 | `verity-verifier` | Rust + WASM | built, refusal proven live | not yet written |
 | App lifecycle contract | §5 | `verity-app-template` | TS + Python | built | not yet written |
@@ -320,10 +349,15 @@ Stated because a diagram that omits its own gaps invites someone to plan against
   binding conditions, the first being testnet only. There must be no pretense of a limit in the
   meantime: a check the agent can edit is worse than none.
 - **No deployed infrastructure.** `nix flake check` passes; no machine has been built from it.
-- **The orchestrator has never run against a real deployment.** This is now the largest untested
-  path in the system. It is the component that chooses upgrade-versus-deploy, and `phala deploy`
-  creates a *new* CVM without `--cvm-id` while updating in place with it — so ADR 0008's silent data
-  loss is one missing argument on the same command.
+- **The orchestrator cannot deploy anything, and this is stronger than "has not been run".**
+  `ChainReader` and `Platform` are traits whose only implementations are test fakes; there is no HTTP
+  client, no `phala` invocation, no adapter of any kind. What exists is the decision — which CR-2
+  made a pure function of the on-chain binding, and which is now well tested — with nothing wired to
+  either side of it. **This is the largest untested path in the system**, and writing those adapters
+  is where ADR 0008's silent data loss actually becomes reachable: `phala deploy` creates a *new* CVM
+  without `--cvm-id` and updates in place with it, so the failure is one missing argument on the same
+  command. It is also where MA-12 lands — the endpoint the adapter reports must be the
+  TLS-passthrough form, or nothing an agent receives can be channel-bound (ADR 0027).
 - **L-01 and L-05 have never run.** Both need a registry push, which is a Tier 1 secret and
   therefore a human's to run (C5).
 - **No newer *platform* has been verified.** L-02, L-03 and L-04 all ran on 2026-08-08 against

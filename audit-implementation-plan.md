@@ -93,7 +93,8 @@ six essentials (review CR-1). No MITM required: the quote is fetched out-of-band
 - Given a genuine quote from CVM-A and a TLS cert from endpoint-B, `verify()` returns a verdict whose
   `ChannelBound` is `Failed` and `is_trustworthy() == false`.
 - Given a genuine quote and the matching cert from the same enclave, `ChannelBound` is `Passed`.
-- `ARCHITECTURE.md` arrow 7 and §"What verification actually checks" describe channel binding; the
+- `ARCHITECTURE.md` arrow 8 (arrow 7 when CR-1 was written; MA-8 inserted the `redeem` edge and
+  renumbered) and §"What verification actually checks" describe channel binding; the
   seven-check list becomes eight (or seven essentials + boot).
 
 **Tests:**
@@ -542,15 +543,25 @@ Folded into MA-4 artifacts — reconcile RFC/`CLAUDE.md` prose with the post-ADR
 
 # Cross-cutting artifacts checklist
 
-- [ ] ADRs: channel-binding-essential (CR-1), Indeterminate+disposition (MA-6), redeem-only (MA-8),
-      instance-binding-hardening-deferred (MA-3), ADR 0008 D5 ↔ 0024 reconciliation (CR-2).
-- [ ] Spec edits: §4.5 + I1 (CR-1), I4 wording (MA-2), §2.8 preconditions (MA-9), §2.6 (MA-10),
+- [x] **ADRs written:** channel-binding-essential — [0027](docs/decisions/0027-channel-binding-is-an-essential-check.md),
+      amended by [0028](docs/decisions/0028-channel-binding-requires-proof-of-possession.md) (CR-1);
+      ADR 0008 D5 ↔ 0024 reconciliation — [0029](docs/decisions/0029-three-identities-instance-app-cvm.md) (CR-2);
+      redeem-only — [0030](docs/decisions/0030-deploy-trigger-is-redeem-only.md) (MA-8).
+      Also [0026](docs/decisions/0026-language-issues-are-implemented-by-their-team.md), which the
+      review did not ask for.
+- [ ] **ADRs outstanding:** Indeterminate + disposition (MA-6);
+      instance-binding-hardening-deferred (MA-3).
+- [x] **Spec edits done:** §4.5 comparison list + I1 wording (CR-1).
+- [ ] **Spec edits outstanding:** I4 wording (MA-2), §2.8 preconditions (MA-9), §2.6 (MA-10),
       §8 (MA-11).
 - [ ] Runbooks: `attestation-failure.md`, `verifier-stopped-checking.md` (MA-5).
 - [ ] Experiment record: L-06 cold reconstitution (MA-10); L-02 re-run with `instance_id` +
       image-cache assertions (CR-2, MA-11).
-- [ ] Closed-loop: `06-refuses-relayed-endpoint.sh` (CR-1).
-- [ ] Observability: `ChannelBound` + agent trust-decision span + `Indeterminate` in conventions.
+- [x] Closed-loop: `06-refuses-relayed-endpoint.sh` (CR-1) — written, seen to fail, now passing;
+      plus `07`, `08` and `_check-unbound.sh`. `08` steps 7-11 ran green on hardware 2026-08-14.
+- [x] Observability: `channel_bound` in `verity.verify.checks` — and the three names already there
+      were wrong (`mrconfigid`, `image_digest`, `os_measurements` are emitted by nothing).
+- [ ] Observability outstanding: agent trust-decision span; `Indeterminate` (MA-6).
 - [ ] Written requirement carried to the ERC-7710 replacement if MA-2 is not built in the throwaway
       service.
 
