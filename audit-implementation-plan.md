@@ -238,6 +238,15 @@ requirement** in `records/rfcs/2026-07-25-non-custodial-payments.md` (or a note)
 re-issuance + single-chain invariant to the ERC-7710 replacement — not silence.
 **Gate:** reviewer sign-off; note I4's atomicity claim is being refined (update the spec's I4 wording).
 
+**Built** (2026-08-15), chain-derived rather than stored — no datastore:
+[ADR 0031](docs/decisions/0031-purchase-idempotency-is-chain-derived.md), spec I4 reworded.
+**Acceptance criterion 2 is *conditionally* satisfied** — see ADR 0031 C2/C3: recovery fails
+permanently if the developer changes the payment *asset* or if the *burn term* changes between
+payment and mint, and degrades on a non-archive RPC. Price and `payTo` changes are recovered.
+Two findings surfaced, not fixed: the CI `testnet-only` grep misses a mainnet imported from
+`viem/chains` by name (so `NotATestnetError` is the real ADR 0002 condition-1 gate), and
+`npm ci || npm install` masks a broken lockfile.
+
 ---
 
 ## MA-3 — Commit-reveal instance binding [MAINNET GATE]
@@ -551,9 +560,10 @@ Folded into MA-4 artifacts — reconcile RFC/`CLAUDE.md` prose with the post-ADR
       review did not ask for.
 - [ ] **ADRs outstanding:** Indeterminate + disposition (MA-6);
       instance-binding-hardening-deferred (MA-3).
-- [x] **Spec edits done:** §4.5 comparison list + I1 wording (CR-1).
-- [ ] **Spec edits outstanding:** I4 wording (MA-2), §2.8 preconditions (MA-9), §2.6 (MA-10),
-      §8 (MA-11).
+- [x] **ADR done:** 0031 purchase-idempotency-is-chain-derived (MA-2).
+- [x] **Spec edits done:** §4.5 comparison list + I1 wording (CR-1); I4 wording (MA-2) — atomicity
+      restated as a recoverability claim, bounded by ADR 0031 C2/C3.
+- [ ] **Spec edits outstanding:** §2.8 preconditions (MA-9), §2.6 (MA-10), §8 (MA-11).
 - [ ] Runbooks: `attestation-failure.md`, `verifier-stopped-checking.md` (MA-5).
 - [ ] Experiment record: L-06 cold reconstitution (MA-10); L-02 re-run with `instance_id` +
       image-cache assertions (CR-2, MA-11).
@@ -562,8 +572,10 @@ Folded into MA-4 artifacts — reconcile RFC/`CLAUDE.md` prose with the post-ADR
 - [x] Observability: `channel_bound` in `verity.verify.checks` — and the three names already there
       were wrong (`mrconfigid`, `image_digest`, `os_measurements` are emitted by nothing).
 - [ ] Observability outstanding: agent trust-decision span; `Indeterminate` (MA-6).
-- [ ] Written requirement carried to the ERC-7710 replacement if MA-2 is not built in the throwaway
-      service.
+- [x] Written requirement carried to the ERC-7710 replacement: MA-2 **was** built in the throwaway
+      service, and [ADR 0031](docs/decisions/0031-purchase-idempotency-is-chain-derived.md) carries
+      the requirement regardless — see its "Carried to the ERC-7710 replacement" section, which names
+      the four things that must be re-derived on a rail with no EIP-3009 nonce.
 
 # Verification discipline (CLAUDE.md — non-negotiable)
 
