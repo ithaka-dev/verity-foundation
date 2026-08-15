@@ -338,7 +338,16 @@ Recorded in [`docs/decisions/0001-control-center-stack.md`](docs/decisions/0001-
 - **Suspicious speed is a failure signal.** A job that finishes far faster than the work it claims
   to do has skipped the work. The mutation harness gave itself away with 0.06-second "test runs".
 - A gate is only trustworthy once it has been seen to **fail**. Break the thing it guards, watch it
-  go red, put it back.
+  go red, put it back. **This applies to tests, not only to CI jobs** — a test written from a belief
+  rather than from a failure is the most common defect this project produces.
+- **Write the check from the failure, not from the property.** Produce the negative first — break the
+  code, build the hostile implementation, capture the transcript of the thing going wrong — and
+  assert against that artifact. A check tends to get written at the moment its author has just
+  convinced themselves the property holds, which is exactly when they have no working example of it
+  failing. Implementing six audit issues produced two defects in the product and roughly twenty in
+  the things that check it; the taxonomy, the five kinds and what actually caught them are in
+  [`records/experiments/2026-08-15-a-taxonomy-of-gates-that-do-not-guard.md`](records/experiments/2026-08-15-a-taxonomy-of-gates-that-do-not-guard.md).
+  Read it before adding a gate.
 
 **Substantial work**
 - Follow Research → Plan → Annotate → Implement. Plans land in `records/plans/` when the work is
