@@ -1,7 +1,7 @@
 # Audit implementation plan — 2026-08-09 system-design review
 
-**Status:** active — CR-1, CR-2, MA-1, MA-2, MA-7 and MA-8 are landed; see each issue's
-commit for the findings and accepted limits. Three issues found while implementing are
+**Status:** active — CR-1, CR-2, MA-1, MA-2, MA-7, MA-8 and FI-1 are landed; see each issue's
+commit for the findings and accepted limits. Four issues found while implementing are
 recorded under **FI**, and **MA-12** was split out of CR-2.
 **Source review:** [`records/reviews/2026-08-09-system-design-review.md`](records/reviews/2026-08-09-system-design-review.md)
 **Reviewed commit:** `7c26cd4` (verity-foundation) + sibling HEADs of 2026-08-09
@@ -63,9 +63,10 @@ Phase 5 (operational substrate + honest docs; cheap, do alongside)
   MI-5  file-backed compose cache      MI-6  capability-claim purchase guidance
 
 Found while implementing (see the FI section; not from the review)
-  FI-1  testnet-only gate misses mainnet   [ADR 0002 condition — do not let this sit]
+  FI-1  testnet-only gate misses mainnet   [ADR 0002 condition] — LANDED a155243
   FI-2  Slither runs nowhere               (Phase 3, with the contract work)
   FI-3  LicenseHandler size ceiling        (blocks further invariant actors)
+  FI-4  contracts can be deployed to mainnet [ADR 0002 condition — the irreversible act]
 
   MA-12 passthrough endpoint on Redemption (split out of CR-2; the last unchecked
         platform self-report on the redemption path)
@@ -654,6 +655,30 @@ names a chain.
 **Acceptance:** a commit introducing `import {base}` fails CI. Demonstrated failing before trusted.
 **Gate:** this is an ADR 0002 condition; treat a gap here as blocking for any real-value discussion.
 
+**LANDED** — `verity-payments` `a155243`, CI run `31934715873` green with all three new steps run.
+`script/check-testnet-only.mjs` walks the TypeScript AST; 61 fixtures; LGTM-with-nits under ADR 0018
+after four review rounds.
+
+Two things worth carrying forward, because the plan's estimate was wrong in a way that repeats:
+
+- **The plan's own remedy was half the fix.** An allow-list of chain identities was right and was
+  implemented first — over a hand-written lexer, which a red-team pass bypassed eighteen ways. A
+  text scan answers a question about *bytes*; the condition is about what the program *does*. Where
+  a check has to understand source, parse it.
+- **The false positives mattered as much as the bypasses.** `100`/`250`/`5000` on a production-id
+  deny-list refuse `setTimeout(fn, 5000)`; `url` as an RPC position refuses this project's own OTel
+  collector address. A gate that reddens on ordinary commits gets deleted and then catches nothing,
+  so `accepted/` fixtures — whose job is to keep the gate alive — turned out to be what made the
+  tightenings possible rather than merely recorded. Budget for them.
+
+**Scope reached, and the two repos deliberately left alone.** `verity-payments` only. The plan said
+"extend to every repo that names a chain"; measured, only two do. `verity-app-template` takes
+`chain_id` as a *parameter*, its sole literal is 84532, and it has no value-moving path — no
+`sendTransaction`, no `writeContract`, no wallet key — so it gets no gate, and one there would be
+copied by third parties who legitimately target mainnet. `verity-orchestrator` and `verity-verifier`
+name no chain at all today; the orchestrator will need this when it acquires a chain client.
+`verity-contracts` needs a different mechanism entirely — see FI-4.
+
 ## FI-2 — Slither runs nowhere
 
 **Repo / files:** `verity-contracts/.github/workflows/ci.yml`.
@@ -683,6 +708,58 @@ apply to every future harness silently.
 **Why it matters:** MA-7 established that the invariant suite's blind spots are *structural* — it had
 no reentrant actor at all. Closing those blind spots means adding actors, which is exactly what this
 ceiling blocks.
+
+## FI-4 — `verity-contracts` can be deployed to mainnet, and nothing objects [ADR 0002 CONDITION]
+
+**Repo / files:** `verity-contracts/script/{Deploy,DeployAppManifest,PublishVersion}.s.sol`,
+`.github/workflows/ci.yml`.
+
+**Problem, measured 2026-08-16:**
+
+| | |
+|---|---|
+| `block.chainid` in `src/`, `script/`, `test/` | **zero** occurrences |
+| `vm.startBroadcast()` sites | **5**, across the three scripts above |
+| how the chain is chosen | entirely by `--rpc-url "$VERITY_RPC_URL"` at invocation |
+| CI jobs | 5 — `fmt · build · test`, `ecrecover is not called directly`, `mutation score`, `AppManifestFactory has no storage`, `coverage`. **None concerns chains.** |
+
+So `VERITY_RPC_URL=<mainnet> forge script script/Deploy.s.sol --broadcast` deploys `LicenseToken`
+and `AppManifestFactory` to Ethereum mainnet, and nothing anywhere refuses.
+
+**Why this is sharper than FI-1, whose fix cannot be reused here.** FI-1's gate works by reading
+source for a named chain. There is no chain literal in `verity-contracts` to find — the chain
+arrives as an environment variable at the moment of broadcast, so a static scan of this repo passes
+correctly and uselessly. Enforcement has to run *against the chain actually connected*, which means
+`require(block.chainid == …)` inside the scripts. And this is the **irreversible** act: a mainnet
+deploy cannot be withdrawn, where a mistaken commit can. ADR 0002 condition 1 is "no real value, at
+any point"; a `LicenseToken` live on mainnet is the precondition for real value existing at all.
+
+**What already limits the blast radius, and what it does not cover.** `LicenseToken` and
+`AppManifest` bind their EIP-712 domains to `block.chainid` through OpenZeppelin's
+`_domainSeparatorV4()`, so a testnet-signed authorization cannot replay against a mainnet
+deployment. That is replay protection, not deployment protection — it makes a wrong-chain deploy
+inert rather than dangerous, and does nothing about the deploy itself, which is what ADR 0002
+forbids.
+
+**Change:** a chain guard at every broadcast site, allow-listing testnet ids, refusing everything
+else. Prefer one shared modifier or base contract over five copies — five places to remember is
+four too many, and `PublishVersion.s.sol` is the one a developer runs repeatedly. State whether
+`--broadcast`-less simulation should also be guarded (it should not: simulating against mainnet
+state is legitimate and sometimes necessary).
+
+**Acceptance:** a broadcast against a non-testnet `$VERITY_RPC_URL` reverts before any state is
+written, **demonstrated failing first** — against a real non-testnet RPC or a forked one, not a unit
+test asserting the modifier in isolation. The guard must be seen to stop a real `forge script
+--broadcast`, because that is the thing it exists to stop.
+
+**Gate:** ADR 0002 condition, and Solidity — [ADR 0026](docs/decisions/0026-language-issues-are-implemented-by-their-team.md)
+routes it through the `solidity-team` (architect → developer → blind reviewer), not an agent working
+alone. Treat a gap here as blocking for any real-value discussion, exactly as FI-1 was.
+
+**Related, and deliberately not folded in:** `verity-orchestrator` has no chain client at all today
+(`ChainReader` and `Platform` have one implementation each, both in `tests/`), so it has nothing to
+guard yet. It will need the same guard the moment it acquires one, and that is a line in the adapter
+work rather than an issue of its own.
 
 ---
 
