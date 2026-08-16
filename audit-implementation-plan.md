@@ -1,6 +1,6 @@
 # Audit implementation plan — 2026-08-09 system-design review
 
-**Status:** active — CR-1, CR-2, MA-1, MA-2, MA-7, MA-8 and FI-1 are landed; see each issue's
+**Status:** active — CR-1, CR-2, MA-1, MA-2, MA-7, MA-8, FI-1 and FI-4 are landed; see each issue's
 commit for the findings and accepted limits. Four issues found while implementing are
 recorded under **FI**, and **MA-12** was split out of CR-2.
 **Source review:** [`records/reviews/2026-08-09-system-design-review.md`](records/reviews/2026-08-09-system-design-review.md)
@@ -66,7 +66,7 @@ Found while implementing (see the FI section; not from the review)
   FI-1  testnet-only gate misses mainnet   [ADR 0002 condition] — LANDED a155243
   FI-2  Slither runs nowhere               (Phase 3, with the contract work)
   FI-3  LicenseHandler size ceiling        (blocks further invariant actors)
-  FI-4  contracts can be deployed to mainnet [ADR 0002 condition — the irreversible act]
+  FI-4  contracts can be deployed to mainnet [ADR 0002 condition] — LANDED 8e0596e
 
   MA-12 passthrough endpoint on Redemption (split out of CR-2; the last unchecked
         platform self-report on the redemption path)
@@ -719,12 +719,25 @@ ceiling blocks.
 | | |
 |---|---|
 | `block.chainid` in `src/`, `script/`, `test/` | **zero** occurrences |
-| `vm.startBroadcast()` sites | **5**, across the three scripts above |
+| `vm.startBroadcast()` call sites | **4** — `Deploy.s.sol:36`, `DeployAppManifest.s.sol:33` and `:42`, `PublishVersion.s.sol:119`. Five on-chain writes (`Deploy`'s one broadcast deploys two contracts), four invocation paths (`DeployAppManifest`'s two are mutually exclusive branches on `VERITY_FACTORY`). |
 | how the chain is chosen | entirely by `--rpc-url "$VERITY_RPC_URL"` at invocation |
 | CI jobs | 5 — `fmt · build · test`, `ecrecover is not called directly`, `mutation score`, `AppManifestFactory has no storage`, `coverage`. **None concerns chains.** |
 
 So `VERITY_RPC_URL=<mainnet> forge script script/Deploy.s.sol --broadcast` deploys `LicenseToken`
 and `AppManifestFactory` to Ethereum mainnet, and nothing anywhere refuses.
+
+> **The count was first recorded as five sites.** It was four; the fifth grep hit was a NatSpec
+> mention at `Deploy.s.sol:22`. Corrected on the architect's re-verification of this table — which
+> is what a brief carrying measured facts is for, and an argument for carrying the raw line numbers
+> rather than only the total.
+
+**And `--broadcast` is not required.** Measured on forge 1.7.1 during implementation: `forge script
+--rpc-url <mainnet>` with no `--broadcast` writes a dry-run artifact, and a following `forge script
+--resume` **deploys it for real** — nonce 0 → 1, code on chain — without ever executing the script.
+Neither command contains `--broadcast`, and because `run()` never runs on the resume path, **no
+Solidity guard of any shape can fire on it.** What closes it is that a dry run which *reverts*
+writes no artifact, so the resume has nothing to read. That makes refusing the dry run load-bearing
+rather than merely tidy.
 
 **Why this is sharper than FI-1, whose fix cannot be reused here.** FI-1's gate works by reading
 source for a named chain. There is no chain literal in `verity-contracts` to find — the chain
@@ -755,6 +768,26 @@ test asserting the modifier in isolation. The guard must be seen to stop a real 
 **Gate:** ADR 0002 condition, and Solidity — [ADR 0026](docs/decisions/0026-language-issues-are-implemented-by-their-team.md)
 routes it through the `solidity-team` (architect → developer → blind reviewer), not an agent working
 alone. Treat a gap here as blocking for any real-value discussion, exactly as FI-1 was.
+
+**LANDED** — `verity-contracts` `8e0596e`, via the solidity team per ADR 0026.
+[ADR 0032](docs/decisions/0032-testnet-only-is-enforced-per-repo-by-different-mechanisms.md) records
+the cross-repo scope: four repos, four different answers, and the rule that ties them together.
+
+Three things this issue established that outlive it:
+
+- **`--broadcast` was never required.** A dry run against mainnet writes an artifact, and
+  `forge script --resume` deploys it without executing the script — so no Solidity guard can
+  intercept that path. The property had to be phrased over *artifacts*, not flags: a refused
+  invocation writes nothing to replay.
+- **The guard was specified twice against a value the caller controls** — `block.chainid`, then
+  `vm.getChainId()`, both the *simulated* chain id, settable via `--chain`, `FOUNDRY_CHAIN_ID`, a
+  gitignored `.env`, or `foundry.toml` while the transaction still goes to the endpoint. Six vectors
+  deployed to a chain-1 node with the guard silent. The threat model had classified a lying RPC as
+  out of scope and then trusted an input the constrained party supplies — the shape §2.7 and I2
+  forbid. **Ask who controls the value before writing any check against it.**
+- **The gate that mattered could not be a unit test.** Deleting the endpoint check passes
+  `forge test` — no endpoint exists there — and only dies in a harness that runs real `forge script`
+  invocations against a local node. `test/TestnetOnly.t.sol` says so in its own text.
 
 **Related, and deliberately not folded in:** `verity-orchestrator` has no chain client at all today
 (`ChainReader` and `Platform` have one implementation each, both in `tests/`), so it has nothing to
