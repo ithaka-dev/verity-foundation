@@ -54,6 +54,7 @@ must be updated to point at it. Silence is how decisions get relitigated by acci
 | [0030](0030-deploy-trigger-is-redeem-only.md) | The deploy trigger is redemption only, never an event watcher | accepted |
 | [0031](0031-purchase-idempotency-is-chain-derived.md) | Purchase idempotency is chain-derived, not stored | accepted |
 | [0032](0032-testnet-only-is-enforced-per-repo-by-different-mechanisms.md) | Testnet-only is enforced per repo, by different mechanisms | accepted |
+| [0033](0033-measure-before-design-and-budget-the-rounds.md) | Measure before design, and budget the rounds | accepted |
 
 Add a row when you add an ADR.
 
