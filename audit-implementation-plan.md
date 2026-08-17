@@ -1,8 +1,8 @@
 # Audit implementation plan — 2026-08-09 system-design review
 
-**Status:** active — CR-1, CR-2, MA-1, MA-2, MA-7, MA-8, FI-1 and FI-4 are landed; see each issue's
-commit for the findings and accepted limits. Four issues found while implementing are
-recorded under **FI**, and **MA-12** was split out of CR-2.
+**Status:** active — CR-1, CR-2, MA-1, MA-2, MA-7, MA-8, FI-1, FI-2, FI-3, FI-4 and PRE-1 are landed;
+see each issue's commit for the findings and accepted limits. Four issues found while implementing are
+recorded under **FI**, plus **PRE-1** found while implementing FI-3, and **MA-12** was split out of CR-2.
 **Source review:** [`records/reviews/2026-08-09-system-design-review.md`](records/reviews/2026-08-09-system-design-review.md)
 **Reviewed commit:** `7c26cd4` (verity-foundation) + sibling HEADs of 2026-08-09
 **Scope:** every finding the panel agreed on — 2 Critical, 11 Major, 7 Minor.
@@ -64,8 +64,9 @@ Phase 5 (operational substrate + honest docs; cheap, do alongside)
 
 Found while implementing (see the FI section; not from the review)
   FI-1  testnet-only gate misses mainnet   [ADR 0002 condition] — LANDED a155243
-  FI-2  Slither runs nowhere               (Phase 3, with the contract work)
-  FI-3  LicenseHandler size ceiling        (blocks further invariant actors)
+  FI-2  Slither runs nowhere               [Solidity HARD FAIL] — LANDED 724fd13 + 0177959
+  FI-3  LicenseHandler size ceiling        (blocked further invariant actors) — LANDED b805f49
+  PRE-1 invariant vacuity guards flaked    (found while implementing FI-3) — LANDED d7e0f66
   FI-4  contracts can be deployed to mainnet [ADR 0002 condition] — LANDED 8e0596e
 
   MA-12 passthrough endpoint on Redemption (split out of CR-2; the last unchecked
@@ -449,6 +450,17 @@ CR-2's contract work.
 **Artifacts:** commit-message finding note (ADR 0019).
 **Gate:** HARD-FAIL Solidity security review.
 
+> **One premise of this issue is superseded, corrected by FI-2 on 2026-08-17.** MA-7's brief asserted
+> as established fact that *"`_burn` does not invoke a receiver hook; ERC-1155 burns have no
+> callback"*, and scoped the fix to `_mint` on that basis. Measured against the vendored OpenZeppelin
+> at v5.1.0: `_burn` calls `_updateWithAcceptanceCheck` (`ERC1155.sol:339`) — **the identical function
+> `_mint` uses at `:302`.** There is no hookless burn path. No hook fires because `_burn` passes the
+> literal `address(0)` as `to`, rejected at `ERC1155.sol:201` and independently at
+> `ERC1155Utils.sol:33`. So MA-7's *conclusion* holds and its *premise* does not — do not cite the
+> premise. It matters because an override of `_update`, which OpenZeppelin's own comment at
+> `:189-191` recommends, executes on the burn path too. Recorded at the call site in
+> `src/LicenseToken.sol` and pinned by `test_burningDoesNotInvokeTheHoldersReceiverHook`.
+
 ---
 
 ## MA-8 — `ARCHITECTURE.md` describes what runs; record redeem-only
@@ -692,6 +704,26 @@ first run.
 with a reason in-repo.
 **Gate:** Solidity security, HARD FAIL tier.
 
+**LANDED** — `verity-contracts` `724fd13` + `0177959`, CI run `31998513412` green 10/10. 47 findings
+reported, 20 in scope, each muted in `slither-mutes.toml` with a reason, a `{path, quote}` citation
+that must resolve uniquely, and a content pin where it cites a dependency.
+
+Three things that outlive the issue:
+
+- **The contracts were clean; the registry was not.** Six citations pointed at the wrong code — four
+  off by exactly the lines the change itself added — and `evidence` was never verified, so a citation
+  to a nonexistent file exited 0. Citations are now literal text, never line numbers, resolved at
+  check time.
+- **`--ignore-compile` makes the gate blind to stale artifacts.** A `tx.origin` bypass injected
+  without rebuilding gave zero findings and a green gate. And `filter_paths` is a mute wearing a scope
+  label — under the design's own config it silently removed both Medium reentrancy findings. Scope by
+  compile target instead; there is deliberately no `slither.config.json`.
+- **The mute key was text whose order Slither does not fix.** `reentrancy.py:42` sorts a `set[Node]` by
+  a non-unique `node_id`, `Node` has no `__hash__`, so emitted order follows memory layout — stable per
+  interpreter build, different between local and the runner. It passed every local gate and reddened
+  CI. The lesson recorded as rule 0: a fixture that varies a third-party tool's output must not derive
+  the variation from the implementation under test.
+
 ## FI-3 — `LicenseHandler` is 270 bytes from the EIP-170 ceiling
 
 **Repo / files:** `verity-contracts/test/invariant/LicenseHandler.sol`, `test/invariant/ManifestGuards.sol`.
@@ -708,6 +740,62 @@ apply to every future harness silently.
 **Why it matters:** MA-7 established that the invariant suite's blind spots are *structural* — it had
 no reentrant actor at all. Closing those blind spots means adding actors, which is exactly what this
 ceiling blocks.
+
+**LANDED** — `verity-contracts` `b805f49`, CI run `31958624193` green 7/7. Handler **24,306 → 18,544**
+runtime, 27,933 initcode, headroom 6,032 / 21,219. Thirteen guard bodies moved into four contracts over
+a `GuardBase`; two stay, each with its reason.
+
+**Two limits, not one.** The design held that duplication across contracts is free because EIP-170 is
+per-contract. That is true only when the auxiliaries are deployed *outside* the contract at the
+ceiling; deployed in its constructor, every `new GuardContract(...)` charges its creation code to the
+handler's **initcode**, and the headline fix took it to 54,951 against EIP-3860's 49,152 — the fix made
+`forge build --sizes` exit 1. Recovery was also 6,428 B, not the predicted 8-12 KB, because the handler
+never sheds `_auth`/`_sign`.
+
+**The split's own hazard was the point.** `targetContract` makes every public function a fuzzer action,
+so moving functions off silently shrinks the action set — the suite stays green, runs faster, proves
+less. Replaced by an explicit `targetSelector` allow-list bound to a declaration by
+`test_theFuzzedSetIsExactlyTheDeclaredSet`. Two HARD FAILs were found in that mechanism: the declaration
+was checked against the ABI but never against what `targetSelector` receives, and three guard families
+sharing one interface type were positionally interchangeable — passing the same one three times gave
+green build, green tests, green checker and `mutate.sh` 19/19, while `--quick` fell 17/19 → 12/19.
+
+**Also corrected:** `test/invariant/ManifestGuards.sol` did not exist when this entry was written —
+`ManifestGuards` and `ReentrantActor` were declared inside `LicenseHandler.sol`. And `forge build
+--sizes` does not measure contracts inheriting `Test`, so `LicenseInvariants` sits at 74,227 B in a
+green table: moving handler code there would satisfy every acceptance criterion while being the
+exemption this entry rejects, invisibly.
+
+## PRE-1 — the invariant vacuity guards flaked, so mutation scores were guesses
+
+**Repo / files:** `verity-contracts/test/invariant/LicenseInvariants.t.sol` (`afterInvariant`),
+`foundry.toml`, `script/mutate.sh`.
+**Problem:** found while implementing FI-3. `assertGt(guardAttempts, 0)` failed about one run in
+twenty-five, and inside `script/mutate.sh` — which runs the suite once per mutant and counts any
+non-zero exit as a kill — a spurious red is a **false kill**, the one direction that reads as green.
+Every mutation figure this repo had cited carried that error bar, including in FI-3's and FI-4's
+commit messages.
+**Cause, measured over 76,800 sequences:** per-sequence `guardAttempts` is Binomial(64, 1/10) —
+`tryGuards` is reached by one selector in ten and is sometimes never selected. Nothing else. The
+apparent 2.6× discrepancy against the model never existed: three prior samples pooled to n=80, and the
+eleven invariant tests are **one** sample, not eleven. Validated out of sample at depths 32/48/64.
+**The deeper finding:** the flake and the useless persisted counterexample are **one** defect.
+`afterInvariant` is a per-sequence hook asserting campaign-level properties, so every
+`assertGt(counter, 0)` there is both flaky *and* false for every short sequence — which is why
+Foundry's shrinker terminated at a one-call fixture that failed on a *different* assertion than the
+headline reported. Breaking reentrancy produced an artifact blaming minting, and that artifact
+outlived the fix.
+
+**LANDED** — `verity-contracts` `d7e0f66`, CI run `31978921549` green 9/9. Flake **4/200 → 0/200**,
+bound 1.5%; the new metrics gate's own false-alarm rate also 0/200. Campaign-reach moved to
+deterministic tests, with the property that could not move **declined in the file with its reason**
+rather than deleted.
+
+**A deferral is only as good as its trigger.** The design deferred the metrics-table gate naming a
+foundry bump or a `runs`/`depth` change as the trigger; the defect that fired was a one-token source
+edit — `_bound` losing its modulo gave 151 tests passed in 535 ms with the campaign reaching nothing.
+The rule now recorded in `check-invariant-metrics.py`: **a trigger stated in terms of what might break
+is worthless — it must name what the shipped gate structurally cannot observe.**
 
 ## FI-4 — `verity-contracts` can be deployed to mainnet, and nothing objects [ADR 0002 CONDITION]
 
