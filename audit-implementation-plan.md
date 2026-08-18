@@ -1,6 +1,6 @@
 # Audit implementation plan — 2026-08-09 system-design review
 
-**Status:** active — CR-1, CR-2, MA-1, MA-2, MA-7, MA-8, FI-1, FI-2, FI-3, FI-4 and PRE-1 are landed;
+**Status:** active — CR-1, CR-2, MA-1, MA-2, MA-7, MA-8, FI-1 through FI-5 and PRE-1 are landed;
 see each issue's commit for the findings and accepted limits. Four issues found while implementing are
 recorded under **FI**, plus **PRE-1** found while implementing FI-3, and **MA-12** was split out of CR-2.
 **Source review:** [`records/reviews/2026-08-09-system-design-review.md`](records/reviews/2026-08-09-system-design-review.md)
@@ -67,6 +67,7 @@ Found while implementing (see the FI section; not from the review)
   FI-2  Slither runs nowhere               [Solidity HARD FAIL] — LANDED 724fd13 + 0177959
   FI-3  LicenseHandler size ceiling        (blocked further invariant actors) — LANDED b805f49
   PRE-1 invariant vacuity guards flaked    (found while implementing FI-3) — LANDED d7e0f66
+  FI-5  lib/ docs described one mechanism   (filed on a false premise) — LANDED 63da742
   FI-4  contracts can be deployed to mainnet [ADR 0002 condition] — LANDED 8e0596e
 
   MA-12 passthrough endpoint on Redemption (split out of CR-2; the last unchecked
@@ -452,9 +453,10 @@ CR-2's contract work.
 
 > **One premise of this issue is superseded, corrected by FI-2 on 2026-08-17.** MA-7's brief asserted
 > as established fact that *"`_burn` does not invoke a receiver hook; ERC-1155 burns have no
-> callback"*, and scoped the fix to `_mint` on that basis. Measured against the vendored OpenZeppelin
-> at v5.1.0: `_burn` calls `_updateWithAcceptanceCheck` (`ERC1155.sol:339`) — **the identical function
-> `_mint` uses at `:302`.** There is no hookless burn path. No hook fires because `_burn` passes the
+> callback"*, and scoped the fix to `_mint` on that basis. Measured against the pinned
+> OpenZeppelin submodule at v5.1.0 (`69c8def5`): `_burn` calls `_updateWithAcceptanceCheck`
+> (`ERC1155.sol:339`) — **the identical function `_mint` uses at `:302`.** There is no hookless
+> burn path. No hook fires because `_burn` passes the
 > literal `address(0)` as `to`, rejected at `ERC1155.sol:201` and independently at
 > `ERC1155Utils.sol:33`. So MA-7's *conclusion* holds and its *premise* does not — do not cite the
 > premise. It matters because an override of `_update`, which OpenZeppelin's own comment at
@@ -796,6 +798,39 @@ foundry bump or a `runs`/`depth` change as the trigger; the defect that fired wa
 edit — `_bound` losing its modulo gave 151 tests passed in 535 ms with the campaign reaching nothing.
 The rule now recorded in `check-invariant-metrics.py`: **a trigger stated in terms of what might break
 is worthless — it must name what the shipped gate structurally cannot observe.**
+
+## FI-5 — the `lib/` docs described one mechanism where there are two
+
+**Repo / files:** `verity-contracts/lib/VENDORED.md`, `.github/workflows/ci.yml`.
+**Filed as:** *"`lib/openzeppelin-contracts` is a gitlink with no `.gitmodules`, silently cloned
+from
+github.com on every CI run, while `VENDORED.md` says a fresh clone builds with no extra steps."*
+
+**Two thirds of that premise was false**, and the correction is
+[`records/experiments/2026-08-18-correction-openzeppelin-is-a-declared-submodule.md`](records/experiments/2026-08-18-correction-openzeppelin-is-a-declared-submodule.md).
+`.gitmodules` exists, is tracked, and was added in `bd74f63`. And the auto-install honours the pin —
+a fresh clone with `--no-recurse-submodules` then `forge build` lands `69c8def5` = v5.1.0, exactly
+the gitlink, because forge runs `git submodule update --init --recursive` itself. There was never
+version drift, and FI-2's content pins were never at risk. The error came from a `.gitmodules` check
+run inside an `&&` chain whose `rm -rf` had already failed, so it executed in the wrong directory —
+and from reading past a `git submodule status` that said "clean, initialised" minutes later.
+
+**What was real:** the doc asserted one mechanism for a directory that has two, and nine of ten CI
+jobs used `actions/checkout`'s default, fetching OpenZeppelin mid-build instead of at checkout and
+dragging in its three test submodules that `src/` does not need.
+
+**LANDED** — `verity-contracts` `63da742`. Every job now sets `submodules: true`; measured, `forge
+build` then touches no network. Non-recursive is sufficient, and the `slither` job moved from
+`recursive` to `true` only after its content pins were re-verified in a non-recursively checked-out
+tree. `VENDORED.md` now names both mechanisms, says the submodule is declared rather than unmanaged,
+and records that **the pin is honoured whether or not you initialise it** — so nobody "fixes" a
+build
+that appears to work by accident.
+
+**Worth keeping:** this is the second issue in two days filed on a measurement generalised past its
+subject. The other is [the yadm correction](records/experiments/2026-08-17-correction-the-skills-are-tracked-by-yadm.md).
+Both produced the same rule — when a later command contradicts an earlier conclusion, the
+contradiction is the finding.
 
 ## FI-4 — `verity-contracts` can be deployed to mainnet, and nothing objects [ADR 0002 CONDITION]
 
