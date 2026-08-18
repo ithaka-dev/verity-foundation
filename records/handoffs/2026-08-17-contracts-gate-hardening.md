@@ -1,7 +1,7 @@
 # Handoff: the contracts gates, hardened — FI-1, FI-4, FI-3, PRE-1, FI-2
 
 **Date:** 2026-08-17
-**Status:** open
+**Status:** superseded by [records/handoffs/2026-08-18-audit-board-after-the-contracts-gates.md](2026-08-18-audit-board-after-the-contracts-gates.md)
 **Author:** Claude (agent), session `8469c7aa` (most-recent-transcript heuristic, not a self-identification)
 **Repo(s):** `verity-foundation` (control centre); work landed in `verity-payments` and `verity-contracts`
 **Branch:** `main` — all three repos clean, nothing stashed, nothing unpushed
