@@ -1,0 +1,14 @@
+{
+  "_comment": "Captured by closed-loop/09-capture-boot-reference.sh from a real tdx.small CVM. NOT bundled reference data \u2014 the verifier ships OS image identity and no register values, so a boot reference can only come from a deployment you have independently satisfied yourself about. RTMR3 is deliberately absent: it varies per boot. Re-capture if the guest image OR the node runtime changes.",
+  "os_image": "dstack-0.5.9",
+  "os_image_hash": "bd369a8c2f9edb2b52dad48ac8e0b32dde5f1337c423a506b48d07403a7d8033",
+  "node_id": "18",
+  "node_name": "prod9",
+  "node_version": "v0.5.7",
+  "node_device_id": "573f4908a95b4159c4c262fc8244a485a77d874dc4b1bdf28d38afe80ca77431",
+  "cvm_id": "48670447-83b0-471b-92cc-857a1d20201e",
+  "mrtd": "f06dfda6dce1cf904d4e2bab1dc370634cf95cefa2ceb2de2eee127c9382698090d7a4a13e14c536ec6c9c3c8fa87077",
+  "rtmr0": "68102e7b524af310f7b7d426ce75481e36c40f5d513a9009c046e9d37e31551f0134d954b496a3357fd61d03f07ffe96",
+  "rtmr1": "07e6f51aa763abfe75c3ddfbf4f425fe3f0ceff66d807a75e049303dce9addf68e7218729bd419638af63a370f65878c",
+  "rtmr2": "df67e467e60edc1737bcf8e682d48131bfb427f523226aa7f197a7608e9b3784783fa759ef5b28191fa12f9ddb36b858"
+}
