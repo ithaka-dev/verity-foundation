@@ -131,6 +131,9 @@ six essentials (review CR-1). No MITM required: the quote is fetched out-of-band
 (commitment scheme, cert layout) is unverified against a real CVM, that is a checkpoint to confirm
 before merge, not after. Confirm the `report_data` commitment format against a live dStack quote.
 
+
+**LANDED** — `verity-verifier` `1f4d027` (step 1) + `1c67557` (steps 2-3).
+
 ---
 
 ## CR-2 — Drive create-vs-upgrade off the chain binding, never the licence id
@@ -176,6 +179,9 @@ that changes.
 **Gate:** reviewer sign-off. This is the silent-data-loss guard — its test must be demonstrated
 failing first.
 
+
+**LANDED** — `verity-orchestrator` `74f6dc8`.
+
 ---
 
 # MAJOR
@@ -210,6 +216,9 @@ refusal classification (MA-6).
 **Artifacts:** verifier README "how to embed" rewritten around the wrapper; note in `docs/Verity-spec.md`
 §4.5 that the shipped affordance is a verified transport.
 **Gate:** reviewer sign-off (crown jewel, third-party-facing).
+
+
+**LANDED** — `verity-verifier` `3342449`.
 
 ---
 
@@ -259,6 +268,9 @@ payment and mint, and degrades on a non-archive RPC. Price and `payTo` changes a
 Two findings surfaced, not fixed: the CI `testnet-only` grep misses a mainnet imported from
 `viem/chains` by name (so `NotATestnetError` is the real ADR 0002 condition-1 gate), and
 `npm ci || npm install` masks a broken lockfile.
+
+
+**LANDED** — `verity-payments` `2c75b0e`.
 
 ---
 
@@ -416,6 +428,15 @@ attacks — the loosening pressure ADR 0009 rule 3 resists (review MA-6). The ve
    capture from **two** CVMs on different nodes before trusting (current reference is n=1). Do not
    promote check 7 to essential until the feed exists; "no reference for this image" → `Indeterminate`.
 
+   > **The capture precondition is satisfied as of 2026-08-22.** Measured on prod9 (node 18) against
+   > the 2026-08-08 prod5 capture: `MRTD`, `RTMR0`, `RTMR1` and `RTMR2` are **identical**, `RTMR3`
+   > differs as it must. The reference is determined by the guest image, not the machine — so it can
+   > ship as a version guard. n=2, both US-WEST-1 on node runtime v0.5.7; other regions and runtimes
+   > are unmeasured. Harness `closed-loop/09-capture-boot-reference.sh`, record
+   > [`2026-08-22-boot-reference-is-node-independent.md`](records/experiments/2026-08-22-boot-reference-is-node-independent.md),
+   > commit `d33cd34`. **The signed feed itself is still unbuilt**, so the promotion is still gated.
+   > Note the numbering: this is *check 8* in the code — `ChannelBound` shifted it.
+
 **Acceptance criteria:**
 - `Outcome` has four variants; `Indeterminate` never contributes to `unrun_essentials`.
 - Each `(Check, Outcome)` maps to exactly one disposition; agents branch on the enum, never on prose.
@@ -463,6 +484,9 @@ CR-2's contract work.
 > `:189-191` recommends, executes on the burn path too. Recorded at the call site in
 > `src/LicenseToken.sol` and pinned by `test_burningDoesNotInvokeTheHoldersReceiverHook`.
 
+
+**LANDED** — `verity-contracts` `773e504`.
+
 ---
 
 ## MA-8 — `ARCHITECTURE.md` describes what runs; record redeem-only
@@ -479,6 +503,9 @@ exists (the document's own rule, `ARCHITECTURE.md:8-10`); no watcher references 
 **Artifacts:** ADR "Deploy trigger is redeem-only, not event-watching" (records the pull-beats-push
 rationale so nobody re-adds the watcher as an optimization).
 **Gate:** reviewer sign-off; this closes CR-2's decision in the docs.
+
+
+**LANDED** — `verity-foundation` `1070561`, which is also where ADR 0030 landed.
 
 ---
 
@@ -584,7 +611,10 @@ Folded into MA-4 artifacts — reconcile RFC/`CLAUDE.md` prose with the post-ADR
       Also [0026](docs/decisions/0026-language-issues-are-implemented-by-their-team.md), which the
       review did not ask for.
 - [ ] **ADRs outstanding:** Indeterminate + disposition (MA-6);
-      instance-binding-hardening-deferred (MA-3).
+      instance-binding-hardening-deferred (MA-3) — **this one is due now, not at the gate.** MA-3's
+      *mechanism* is deferred to mainnet; its written requirement is a pre-gate artifact and is
+      unwritten. Nothing in `docs/decisions/` or the orchestrator's `policy.rs` mentions
+      `commitBinding` (checked 2026-08-22).
 - [x] **ADR done:** 0031 purchase-idempotency-is-chain-derived (MA-2).
 - [x] **Spec edits done:** §4.5 comparison list + I1 wording (CR-1); I4 wording (MA-2) — atomicity
       restated as a recoverability claim, bounded by ADR 0031 C2/C3.
