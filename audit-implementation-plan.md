@@ -311,6 +311,12 @@ reveal after delay succeeds; reveal without matching commit reverts.
 - Note in `policy.rs` on orphan reclamation.
 **Gate:** HARD-FAIL Solidity security review at implementation time; explicit mainnet-gate checkpoint.
 
+**Pre-gate artifact LANDED** — [ADR 0034](docs/decisions/0034-instance-binding-hardening-deferred-to-the-mainnet-gate.md),
+`verity-foundation`, 2026-08-23. Records the commit-reveal mechanism, the rejected claim-secret
+variant, the open Phala CVM co-sign question, and the accepted testnet-bounded risk. Contract facts
+re-verified against `LicenseToken.sol` first: `_claimedBy` is never cleared (`grep 'delete _claimedBy'`
+returns nothing; `:261` states it deliberately). **The mechanism itself remains deferred and unbuilt.**
+
 ---
 
 ## MA-4 — App-template parity: journal key and boot record
@@ -610,11 +616,13 @@ Folded into MA-4 artifacts — reconcile RFC/`CLAUDE.md` prose with the post-ADR
       redeem-only — [0030](docs/decisions/0030-deploy-trigger-is-redeem-only.md) (MA-8).
       Also [0026](docs/decisions/0026-language-issues-are-implemented-by-their-team.md), which the
       review did not ask for.
-- [ ] **ADRs outstanding:** Indeterminate + disposition (MA-6);
-      instance-binding-hardening-deferred (MA-3) — **this one is due now, not at the gate.** MA-3's
-      *mechanism* is deferred to mainnet; its written requirement is a pre-gate artifact and is
-      unwritten. Nothing in `docs/decisions/` or the orchestrator's `policy.rs` mentions
-      `commitBinding` (checked 2026-08-22).
+- [x] **ADR done:** instance-binding-hardening-deferred (MA-3) —
+      [0034](docs/decisions/0034-instance-binding-hardening-deferred-to-the-mainnet-gate.md),
+      written 2026-08-23. The *mechanism* stays deferred to the mainnet gate; the written requirement
+      was the pre-gate artifact and it now exists. **Note what the ADR surfaces:** MA-3's
+      "provably empty, provably orphaned" definition is also what unsticks CR-2's accepted dead end,
+      so a live defect is parked inside a deferred issue.
+- [ ] **ADRs outstanding:** Indeterminate + disposition (MA-6).
 - [x] **ADR done:** 0031 purchase-idempotency-is-chain-derived (MA-2).
 - [x] **Spec edits done:** §4.5 comparison list + I1 wording (CR-1); I4 wording (MA-2) — atomicity
       restated as a recoverability claim, bounded by ADR 0031 C2/C3.
