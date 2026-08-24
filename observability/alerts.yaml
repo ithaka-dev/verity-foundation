@@ -20,16 +20,28 @@ groups:
       # The single most important event in the system. A refusal means an agent was offered an
       # endpoint that is not running what its holder licensed — the exact thing Verity exists to
       # make impossible. It is never routine, and it is never a warning.
+      #
+      # **MA-6 re-key.** Was `increase(verity_verify_total{outcome="refused"}[5m]) > 0` — every
+      # refusal, undifferentiated. MA-6 adds a fourth per-check outcome, `indeterminate` (a check
+      # that could not conclude — a retrieval outage, a construction this verifier cannot yet
+      # judge — with a named remedy, distinct from a check that reached a refusal), and a per-check
+      # `disposition` label on `verity_verify_check_total` that is `refuse` exactly when a check
+      # concluded a violation or could not be attempted for a reason with no remedy. Keying this
+      # alert on `disposition="refuse"` is what lets a routine retrieval outage stop paging
+      # `critical` here — see `VerificationCouldNotBeEstablished` below, which is where it pages
+      # instead. `verity.verify.outcome` itself stays binary (`accepted` | `refused`): there is no
+      # third answer to "may I proceed", so a downed gateway still counts as `refused` in that span
+      # attribute. **A refusal that does not appear here is not an all-clear** — it is the other
+      # alert, and the endpoint is still refused.
       - alert: AttestationVerificationFailure
-        expr: increase(verity_verify_total{outcome="refused"}[5m]) > 0
+        expr: increase(verity_verify_check_total{disposition="refuse"}[5m]) > 0
         for: 0m
         labels:
           severity: critical
           invariant: I1
         annotations:
           summary: >-
-            A verifier refused an endpoint ({{ $value }} in 5m,
-            reason {{ $labels.refusal }})
+            The `{{ $labels.check }}` check refused ({{ $value }} in 5m)
           description: >-
             `licensed_composeHash == attested_composeHash` did not hold, or the quote did not
             verify. An agent was offered something other than what its holder licensed.
@@ -38,10 +50,49 @@ groups:
             anything, and above all **do not loosen a check to make it pass** — ADR 0009 rule 3.
             A mismatch is the system working.
 
-            First questions: is `refusal` a mismatch or an unsupported format? An unsupported
-            MR-CONFIG-ID version means the platform changed and the verifier needs updating; a
-            mismatch means do not trust that endpoint.
+            First questions: which check is `{{ $labels.check }}`, and what did it conclude? Read
+            `verity.verify.dispositions` on the span for the full per-check picture — an
+            `update_verifier` or `update_reference` disposition on another check in the same
+            verdict means a platform change, not an attack; a `refuse` on this one means do not
+            trust that endpoint.
           runbook: ../records/runbooks/attestation-failure.md
+
+      # — MA-6 —
+      #
+      # The other half of the split above: verifications refused, but *nothing* dispositioned
+      # `refuse` — every non-passing check named a remedy instead (retry retrieval, supply a
+      # reference, update the verifier). Nobody is protected while this fires, because nothing was
+      # established either way, but nothing was violated either. `for: 15m` because a single failed
+      # fetch is not an event; a quarter hour of them is.
+      #
+      # **Cannot be used to suppress F-08.** The `unless` correlates over a 5m window, not per
+      # verification: a real violation and an outage in the same window fire only the critical, and
+      # a real violation cannot make this alert *fire* — it can only make the warning not fire
+      # alongside a critical that already did. An attacker inducing indeterminacy (e.g. blackholing
+      # a gateway) gains nothing: every affected agent still refuses to proceed, and a genuine
+      # mismatch in the same window still pages `critical` unconditionally.
+      - alert: VerificationCouldNotBeEstablished
+        expr: |
+          sum(increase(verity_verify_total{outcome="refused"}[5m])) > 0
+          unless
+          sum(increase(verity_verify_check_total{disposition="refuse"}[5m])) > 0
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: Verifications are refusing, but nothing was violated — only unestablished
+          description: >-
+            Every non-passing check in this window named a remedy rather than a refusal: a
+            retrieval outage, a missing reference, or a construction this verifier build cannot yet
+            judge. The guarantee is unavailable, not violated.
+
+            Read `verity.verify.dispositions` on a recent span and act on the named remedy — retry
+            the fetch, supply the missing reference, or update the verifier. Do **not** loosen any
+            check to make this stop firing (ADR 0009 rule 3); this alert exists so that stops being
+            tempting for `AttestationVerificationFailure`.
+          # No runbook key: `../records/runbooks/` has none for this yet, and a dangling path is a
+          # known-red input to the runbook-resolution lint the audit plan has outstanding. MA-5 adds
+          # one.
 
       # A refusal is loud. A verifier that never runs is silent, and means nobody is checking.
       - alert: NoVerificationsObserved
@@ -73,6 +124,22 @@ groups:
       # Expressed as "a check that used to run stopped running" rather than "a check is missing",
       # so it survives a deliberate change to the check set: the alert fires on the transition,
       # somebody confirms the change was intended, and the baseline moves.
+      #
+      # **Known pre-existing gap, deliberately NOT closed in this change — pending an operator
+      # decision on its scope.** The MA-6 design record identified that this expression has no
+      # premise guard: it fires per check on *any* series that goes quiet, including the case where
+      # verification itself stopped entirely (a total outage), and every essential check's series
+      # goes quiet together. That produces `critical` **once per check** for a single outage — up to
+      # seven pages, each carrying this alert's own runbook instruction to "treat every acceptance
+      # since the transition as unverified", which is the wrong read for an outage. The considered
+      # fix — an `and on() (sum(increase(verity_verify_total{outcome="accepted"}[1h])) > 0)`
+      # conjunct, encoding this alert's own stated premise that verifications are "still being
+      # reported as accepted" — is recorded in the MA-6 design record rather than applied here,
+      # because this defect's scope (does a total outage always look like this, and is the
+      # per-check multi-page itself desired signal) is still open with the operator. This is
+      # pre-existing and not caused by MA-6; MA-6 is the change that made it matter, by making the
+      # split above route routine outages away from a per-*verdict* critical, which then invites
+      # comparing this per-*check* alert's behaviour under the same outage.
       - alert: VerifierStoppedChecking
         expr: |
           (
@@ -115,6 +182,18 @@ groups:
 
       # A verifier reporting a version it does not support is a platform change, not an attack, and
       # the two look identical if you only compare bytes.
+      #
+      # **This is the specific case `VerificationCouldNotBeEstablished` (above) generalises, and it
+      # predates that alert by roughly a month.** Under MA-6, `MrConfigId::UnsupportedVersion`
+      # dispositions to `update_verifier`, not `refuse` — so a verdict whose only non-passing check
+      # is this one no longer trips `AttestationVerificationFailure`, exactly as this alert's own
+      # description already said it should read ("Not a mismatch and not an attack"). Kept as its
+      # own `warning` rather than folded away, because its remedy is narrower and worth naming by
+      # itself: "the verifier needs a V2 reference", not merely "something is unestablished".
+      # Before MA-6, this alert and F-08 fired **together** for the same event — confirmed by
+      # reading both expressions, `refusal="mrconfigid_unsupported"` also matches
+      # `outcome="refused"`. That double-page disappears once the verifier reports the case as
+      # indeterminate rather than a refusal.
       - alert: UnsupportedMrConfigIdVersion
         expr: increase(verity_verify_total{refusal="mrconfigid_unsupported"}[15m]) > 0
         for: 0m

@@ -1,7 +1,7 @@
 # Handoff: MA-6 is at closed consensus with no code written — and the measurement it was blocked on is done
 
 **Date:** 2026-08-24
-**Status:** open
+**Status:** picked up 2026-08-24
 **Author:** Claude (agent), session `8469c7aa` (most-recent-transcript heuristic, not a self-identification)
 **Repo(s):** `verity-foundation` (control centre), `verity-verifier` (the work), plus the yadm dotfiles repo
 **Branch:** `main` in every Verity repo — all clean, nothing stashed, nothing unpushed

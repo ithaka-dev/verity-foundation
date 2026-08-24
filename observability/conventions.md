@@ -86,9 +86,10 @@ checked*, not only what it concluded.
 
 | Attribute | Type | Notes |
 |---|---|---|
-| `verity.verify.outcome` | `accepted` \| `refused` | |
+| `verity.verify.outcome` | `accepted` \| `refused` | **Deliberately binary, and stays that way under MA-6.** `Outcome` gained a fourth per-*check* value, `Indeterminate` (attempted, could not conclude — distinct from a check that reached a refusal), but this span attribute mirrors `is_trustworthy()`, and there is no third answer to "may I proceed": an essential check that could not be established still means the agent refuses. A downed gateway is `refused` here exactly like a mismatch is. Filter `verity.verify.dispositions` (below) for *why*. |
 | `verity.verify.refusal` | code | `compose_hash_mismatch`, `mrconfigid_mismatch`, `tcb_unacceptable`, `signature_invalid`, `image_digest_absent`, `compose_unavailable`, … |
-| `verity.verify.checks` | string[] | **Which comparisons actually ran.** See below. |
+| `verity.verify.checks` | string[] | **Which comparisons actually ran.** See below. An `Indeterminate` check is one that **ran** — the verifier attempted it and could not conclude — so it appears here exactly as a `Passed`, `Failed` or `Skipped` one does; only a check nobody attempted at all is absent. |
+| `verity.verify.dispositions` | string[] | **New in MA-6.** Members are `"<check>=<disposition>"`, e.g. `"mr_config_id=update_verifier"`. What to do about each non-satisfied check, in the verifier's own typed vocabulary (`Disposition::name()` — see the table below) — never prose to parse. Chosen over two positionally-aligned arrays (an invariant no reader of a trace can check) and over one attribute key per check (an unbounded key set): this is self-describing, order-independent, and greppable in Loki. |
 | `verity.verify.mrconfigid_version` | `v1` \| `v2` \| `unknown` | Branching on the prefix is required; recording which branch was taken makes a platform change visible. |
 | `verity.verify.tcb_status` | string | Intel's status. |
 | `verity.verify.advisory_ids` | string[] | Non-empty means advisories apply. |
@@ -124,6 +125,36 @@ name the verifier never emits fires never:
 `MR-CONFIG-ID` would still be binding the quote to a real connection; one that quietly stopped
 channel-binding accepts a genuine quote replayed beside any endpoint at all, and every other check
 still passes. Its disappearance from this list is the only signal that failure produces.
+
+### Dispositions (MA-6)
+
+The per-check counter carries a second label, so a caller — or an alert — can distinguish "this
+check concluded a violation" from "this check named a remedy":
+
+```text
+verity_verify_check_total{check, disposition}
+  check       — Check::name(), 8 values (unchanged, F-09's key)
+  disposition — Disposition::name(), 6 values (new)
+```
+
+Bounded at 48 series. Both label sets are **closed enums in the verifier**, not free text — the same
+"exact strings the code emits" discipline as the `check` table above, and the same warning applies:
+if this table and `Disposition::name()` disagree, the code is right and this file is a bug.
+
+| Member | Meaning |
+|---|---|
+| `satisfied` | The check ran and passed. Nothing to do. |
+| `refuse` | Refuse. Retrying cannot change it and no remedy applies. **Can appear on a verdict that is still trustworthy** — a mismatched `boot_measurements` (advisory) dispositions to `refuse` without sinking the verdict, because it is a real measured discrepancy whatever else passed. |
+| `retry_retrieval` | Evidence could not be retrieved. Try again, or try another source. |
+| `update_verifier` | This verifier build cannot judge it — a recognised construction, format, or signature it does not yet handle. |
+| `update_reference` | No reference was available to compare against. Obtain one. |
+| `proceed_non_essential` | Not established, and the verdict does not depend on it — the only case this occurs is `(boot_measurements, skipped)`. |
+
+**`AttestationVerificationFailure` (F-08) keys on `disposition="refuse"`, not on `outcome="refused"`
+— see `alerts.yaml`.** This is the change that lets a routine retrieval outage stop paging the same
+`critical` as a genuine mismatch: neither `retry_retrieval`, `update_verifier` nor
+`update_reference` is a violation, so none of them fires it. `VerificationCouldNotBeEstablished`
+covers the case where verifications refused but nothing dispositioned `refuse` at all.
 
 ---
 

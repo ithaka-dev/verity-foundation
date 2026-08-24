@@ -147,7 +147,9 @@ echo "  os image pinned at deploy: ${DSTACK_IMAGE:-dstack-0.5.9}"
 #
 # Check 8 had never run against a live CVM: the runner has had `--boot-reference` since 2026-08-08
 # and nothing passed one, so every run reported `boot_measurements skipped` and the committed
-# reference stayed *captured* rather than *checked*.
+# reference stayed *captured* rather than *checked*. MA-6 changed the no-reference word to
+# `indeterminate` (a named remedy — supply a reference and run again — rather than "nothing to do
+# about it"); this comment's history stands, only the word a bare run now reports has moved.
 #
 # Defaulted here, but **only when the reference describes the image actually deployed**. A reference
 # that silently describes a different platform is worse than none (the fixture's own comment says so):
@@ -171,7 +173,9 @@ import json; print(json.load(open('$candidate')).get('os_image',''))" 2>/dev/nul
     fi
   else
     echo "  boot reference: NONE — no committed reference for '$image'."
-    echo "                  Check 8 will be skipped. Capture one from a deployment you have"
+    echo "                  Check 8 will report indeterminate, not skipped, as of MA-6 — a named"
+    echo "                  remedy exists (supply a reference and run again), it is just not"
+    echo "                  supplied on this run. Capture one from a deployment you have"
     echo "                  independently satisfied yourself about; it cannot be derived."
   fi
 fi

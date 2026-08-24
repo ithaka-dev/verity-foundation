@@ -1,6 +1,6 @@
 # Audit implementation plan — 2026-08-09 system-design review
 
-**Status:** active — CR-1, CR-2, MA-1, MA-2, MA-7, MA-8, FI-1 through FI-5 and PRE-1 are landed;
+**Status:** active — CR-1, CR-2, MA-1, MA-2, MA-6 (changes 1–2), MA-7, MA-8, FI-1 through FI-5 and PRE-1 are landed;
 see each issue's commit for the findings and accepted limits. Four issues found while implementing are
 recorded under **FI**, plus **PRE-1** found while implementing FI-3, and **MA-12** was split out of CR-2.
 **Source review:** [`records/reviews/2026-08-09-system-design-review.md`](records/reviews/2026-08-09-system-design-review.md)
@@ -459,6 +459,19 @@ attacks — the loosening pressure ADR 0009 rule 3 resists (review MA-6). The ve
 format spec (signed, keyed on `os_image_hash`); `observability` note on the new outcome.
 **Gate:** reviewer sign-off (verdict surface is third-party-facing).
 
+**Changes 1–2 LANDED** — `verity-verifier` `163e667`, after a full `rust-team` cycle (closed
+consensus, fresh-eyes review, LGTM twice — findings and red/green transcripts in that commit's
+message). ADR: [0035](docs/decisions/0035-indeterminate-outcome-and-per-check-disposition.md).
+Two acceptance criteria adjusted there, deliberately rather than silently: `Indeterminate { reason }`
+became a typed cause (`Unestablished` — a string cannot drive `disposition()`), and the
+downed-gateway criterion is **narrowed to MI-5** — no code in the crate fetches the compose
+document, so this crate ships the vocabulary and the seams (`Outcome::unestablished()`,
+`From<&FetchError>`, `Refusal::disposition()`), and the end-to-end criterion lands where the fetch
+does. The §6a alert split (operator-approved 2026-08-22) landed in `observability/` alongside;
+nothing emits those series until MA-5, and no wording anywhere claims otherwise. **Change 3 (the
+signed reference feed) remains unbuilt and check 8 stays advisory** — the n=2 capture precondition
+is satisfied (above), the feed is not.
+
 ---
 
 ## MA-7 — CEI: hoist binding writes above `_mint`
@@ -622,7 +635,8 @@ Folded into MA-4 artifacts — reconcile RFC/`CLAUDE.md` prose with the post-ADR
       was the pre-gate artifact and it now exists. **Note what the ADR surfaces:** MA-3's
       "provably empty, provably orphaned" definition is also what unsticks CR-2's accepted dead end,
       so a live defect is parked inside a deferred issue.
-- [ ] **ADRs outstanding:** Indeterminate + disposition (MA-6).
+- [x] **ADR done:** [0035](docs/decisions/0035-indeterminate-outcome-and-per-check-disposition.md)
+      indeterminate-outcome-and-per-check-disposition (MA-6). No ADRs outstanding.
 - [x] **ADR done:** 0031 purchase-idempotency-is-chain-derived (MA-2).
 - [x] **Spec edits done:** §4.5 comparison list + I1 wording (CR-1); I4 wording (MA-2) — atomicity
       restated as a recoverability claim, bounded by ADR 0031 C2/C3.
@@ -634,7 +648,11 @@ Folded into MA-4 artifacts — reconcile RFC/`CLAUDE.md` prose with the post-ADR
       plus `07`, `08` and `_check-unbound.sh`. `08` steps 7-11 ran green on hardware 2026-08-14.
 - [x] Observability: `channel_bound` in `verity.verify.checks` — and the three names already there
       were wrong (`mrconfigid`, `image_digest`, `os_measurements` are emitted by nothing).
-- [ ] Observability outstanding: agent trust-decision span; `Indeterminate` (MA-6).
+- [x] Observability: `Indeterminate` + `disposition` contract (MA-6) — `conventions.md` and the
+      §6a alert split in `alerts.yaml`, landed with `verity-verifier` `163e667`. A *contract*, not a
+      pager: nothing emits the series until MA-5, and F-09's premise guard is documented in place as
+      a pre-existing gap pending an operator scope decision.
+- [ ] Observability outstanding: agent trust-decision span.
 - [x] Written requirement carried to the ERC-7710 replacement: MA-2 **was** built in the throwaway
       service, and [ADR 0031](docs/decisions/0031-purchase-idempotency-is-chain-derived.md) carries
       the requirement regardless — see its "Carried to the ERC-7710 replacement" section, which names
