@@ -1,7 +1,7 @@
 # Handoff: the contracts gates are done — what the audit board looks like now
 
 **Date:** 2026-08-18
-**Status:** open
+**Status:** superseded by [`2026-08-24-ma6-verdict-surface-at-consensus.md`](2026-08-24-ma6-verdict-surface-at-consensus.md)
 **Author:** Claude (agent), session `8469c7aa` (most-recent-transcript heuristic, not a self-identification)
 **Repo(s):** `verity-foundation` (control centre); recent work landed in `verity-contracts` and `verity-payments`
 **Branch:** `main` — all three repos clean, nothing stashed, nothing unpushed
