@@ -9,9 +9,9 @@ Two external audits also arrived, both now archived under
 tracked below as **EA-1 through EA-7** (EA-7's documentation drift is corrected, the rest open); and
 one of `verity-verifier`
 ([2026-08-25](records/audits/verity-verifier/2026-08-25-verifier-audit.md), commit `163e667`),
-tracked as **VA-1 through VA-3** — all three reproduced and confirmed 2026-08-25, none fixed
-(rust-team per ADR 0026; VA-1's fix is under way after the operator chose to enforce, not supersede
-ADR 0014).
+tracked as **VA-1 through VA-3** — all three reproduced and confirmed 2026-08-25. **VA-1 landed**
+(`verity-verifier` `32307b1`) and **VA-2 landed** (`2ecbedf`), each via a full rust-team cycle per
+ADR 0026; **VA-3 remains open**, folded into MI-5.
 **Source review:** [`records/reviews/2026-08-09-system-design-review.md`](records/reviews/2026-08-09-system-design-review.md)
 **Reviewed commit:** `7c26cd4` (verity-foundation) + sibling HEADs of 2026-08-09
 **Scope:** every finding the panel agreed on — 2 Critical, 11 Major, 7 Minor.
@@ -1222,12 +1222,34 @@ and **cannot** be built from a fabricated verdict, so this does not forge a netw
 residual exposure is downstream consumers — telemetry, audit storage, offline tooling — that rely on
 `TrustworthyVerdict`'s documented "cannot be held unless every essential passed" without going through
 `connect_verified`. For them the type is weaker than its own docs claim.
-**Recommended change (as the audit frames it):** make `Verdict::new`/`record` crate-private, expose
-read-only access publicly, and construct `TrustworthyVerdict` only from the assembled path; or, if
-external assembly is a real feature, use proof-carrying per-check result types and make
-failure/indeterminate permanently dominant over a duplicate pass. Add the contradictory-verdict
-reproduction as a permanent regression test.
-**Gate:** rust-team per ADR 0026; public-API change, reviewer sign-off.
+**LANDED** — `verity-verifier` `2ecbedf`, via a full `rust-team` cycle per ADR 0026 (design →
+critique → closed consensus → implementation → fresh-eyes `rust-reviewer` LGTM → architect
+**DESIGN-CONFORMS**), split into the two parts the finding contains:
+
+- **Part 2 (the contradiction) is a real bug, fixed.** `Verdict::outcome()` changed from first-wins
+  to **non-pass-dominates** (returns a non-`Passed` record over a `Passed` one, via the crate's single
+  `Outcome::passed()` predicate). `is_trustworthy()`/`missing_essentials()`/`disposition()` all derive
+  from `outcome()`, so the whole trust surface is now coherent with `failures()`; `results()`/`Display`
+  keep the full transcript. Order-independent for the trust answer, inert for every production/wasm
+  path (each records a check once). `recording_a_check_twice_keeps_the_first` was rewritten (its own
+  doc invited it) and three seen-to-fail regressions added — including one that rules out a *last-wins*
+  implementation. The `Verdict::new`/`record` **crate-private** remedy the audit "preferred" was
+  rejected as infeasible: the wasm crate assembles verdicts check-by-check across the crate boundary
+  (~30 calls), so it is the audit's "external assembly is a required feature" branch.
+- **Part 1 (fabrication) is doc/contract-only** — recommendation (a) alone. `TrustworthyVerdict` is an
+  honest **content-judgment** ("this transcript shows every essential passed"); provenance stays with
+  `VerifiedClient` (private ctor, containment holds). A witness/sanctioned-assembler was **rejected**:
+  it would prove "our checks ran," not "against live evidence" — the real public `verify()` does no
+  I/O and trusts caller-supplied `Evidence`, so a replayed-evidence verdict is indistinguishable from
+  genuine and a witness would manufacture the false confidence ADR 0002/0014 refuse. The type's
+  contract now names **both** forgery routes (hand-assembled `Verdict`; replayed `Evidence` into
+  `verify()`) so the downstream audience sees the boundary. Both the architect and the fresh reviewer
+  independently endorsed (a)-alone; no ADR change, no operator escalation needed.
+
+Findings and full red-first transcripts are in `2ecbedf`'s commit message (ADR 0019). Gates green
+locally (fmt/clippy/doc, `cargo test --all-features`, `cargo check -p verity-verifier-wasm`); wasm32
+verifies in CI. **Note:** this touched `outcome()`, on which VA-1's `disposition()`/`TcbStatus` surface
+depends — the full suite (incl. all VA-1/ADR 0035 tests) stayed green.
 
 ## VA-3 — Compose retrieval does not validate CID/URL targets [Low–Medium] — CONFIRMED, overlaps MI-5
 
