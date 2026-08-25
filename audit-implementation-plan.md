@@ -3,8 +3,11 @@
 **Status:** active — CR-1, CR-2, MA-1, MA-2, MA-6 (changes 1–2), MA-7, MA-8, FI-1 through FI-5 and PRE-1 are landed;
 see each issue's commit for the findings and accepted limits. Four issues found while implementing are
 recorded under **FI**, plus **PRE-1** found while implementing FI-3, and **MA-12** was split out of CR-2.
-A second source arrived 2026-08-23: an external audit of this repo (`autit.md`, committed `c797d5c`),
-tracked below as **EA-1 through EA-7** — EA-7's documentation drift is corrected, the rest are open.
+Two external audits also arrived: one of this repo (`autit.md`, committed `c797d5c`), tracked below
+as **EA-1 through EA-7** (EA-7's documentation drift is corrected, the rest open); and one of
+`verity-verifier` at `163e667` (`verifier-audit.md`, untracked), tracked as **VA-1 through VA-3** —
+all three reproduced and confirmed 2026-08-25, none fixed (rust-team per ADR 0026; VA-1 also needs an
+operator call on ADR 0014).
 **Source review:** [`records/reviews/2026-08-09-system-design-review.md`](records/reviews/2026-08-09-system-design-review.md)
 **Reviewed commit:** `7c26cd4` (verity-foundation) + sibling HEADs of 2026-08-09
 **Scope:** every finding the panel agreed on — 2 Critical, 11 Major, 7 Minor.
@@ -1129,6 +1132,112 @@ into EA-3 — write the check first and let *it* enumerate the misses, rather th
 and then writing a check that has never failed); and archiving the completed root plans
 (`research.md`, `test-plan.md`, eventually `plan.md`) into `records/plans/` — an operator call on
 timing, since `plan.md`'s Phase 4 is still open.
+
+---
+
+# External verifier audit — 2026-08-24/25 (`verity-verifier/verifier-audit.md`)
+
+A second external audit, this one of **`verity-verifier` at `163e667`** (the MA-6 landing commit),
+produced independently and appearing untracked in that repo — same tool-output pattern as `autit.md`.
+417 lines; three findings. **Fate of the file is an open operator decision** (commit as a record,
+keep untracked, or discard); it is cited here as untracked. Numbered `VA-1..VA-3`, mapping to the
+audit's own `VV-01..VV-03`.
+
+**All three were reproduced on 2026-08-25, then the reproduction removed** (the seen-to-fail step the
+handoff required; the auditor left no artifact either). VA-1's unit core and both VA-2 parts run on
+the public API with no Intel collateral — reproduced by a throwaway `tests/` file, each assertion
+passing *against the current tree*, i.e. the loose behaviour is present. VA-1's invisibility half and
+VA-3 are confirmed directly from source. **Nothing was fixed** — these are `verity-verifier` Rust
+changes on the crown-jewel surface, so ADR 0026 routes them through `rust-team` (architect → developer
+→ blind reviewer), and VA-1 additionally needs an operator/architecture call, below.
+
+## VA-1 — TCB enforcement is caller-configurable [High] — CONFIRMED
+
+**Repo / files:** `verity-verifier/crates/verity-verifier/src/{attest.rs,connect.rs,verify.rs}`;
+conflicts with [ADR 0014](docs/decisions/0014-verifier-update-discipline.md).
+**Problem:** `TcbPolicy::accepting([...])` takes arbitrary status strings, sits on the public
+`ConnectRequest::tcb`, and flows into `verify()`. On the accepting path `verify()` records **both**
+`QuoteSignature: Passed` *and* `TcbStatus: Passed` and discards the real status
+(`verify.rs:180 .record(TcbStatus, Passed); :181 let _ = attested;`). So a caller passing
+`accepting(["Revoked"])` against a revoked platform gets a trustworthy verdict whose provenance shows
+`TcbStatus: Passed`, recording neither the actual Intel status nor that the policy was widened.
+**Why it is real, in two independent parts:**
+1. **The knob's existence.** ADR 0014 rule 2 is unambiguous — "TCB status enforcement is mandatory
+   and **not configurable**. No option, no override, no strict mode." A public policy on
+   `ConnectRequest` is an option. The crate defends it as "a visible choice at the call site" and
+   defaults strict (`up_to_date_only`), which is genuinely better than a build flag — but ADR 0014
+   forbids the knob, not just a loose default. The code and the ADR cannot both be correct; that is
+   the audit's own phrasing and it is right.
+2. **The invisibility** (the sharper half, independent of whether a knob may exist). Recording
+   `Passed` while hiding that a `Revoked` status was accepted defeats ADR 0014 **rule 1** — provenance
+   exists precisely so loosening is detectable — and it is the F-09 blind spot ADR 0014 built the
+   verdict surface to close.
+**On the green CI job "TCB enforcement is not overridable":** it does **not** contradict this finding.
+That job asserts only that `dcap-qvl`'s `danger-allow-tcb-override` **feature** is absent from the
+graph and its `dangerous_verify_with_tcb_override` **function** is never called (`ci.yml:163-181`).
+Both hold. The audit found a *different* override, one layer up, that the job never looks at — the
+"gate measuring the wrong thing" / overclaiming-name pattern CLAUDE.md and
+[the taxonomy](records/experiments/2026-08-15-a-taxonomy-of-gates-that-do-not-guard.md) warn about.
+The job's name promises more than its steps check.
+**Operator decision required before any fix.** Either (a) remove `TcbPolicy` from the public API and
+enforce the single project decision inside the verifier, recording the real Intel status + advisory
+IDs in every verdict including success; **or** (b) if named degraded statuses are genuinely wanted,
+supersede ADR 0014 first and represent the accepted-policy in every verdict. Not agent's to choose.
+**Gate:** rust-team per ADR 0026; the CI job should also be renamed/extended so its name stops
+overclaiming (fold into the fix or EA-3). Seen-to-fail regression test is mandatory.
+
+## VA-2 — Public verdict construction defeats the proof-carrying type [Medium] — CONFIRMED
+
+**Repo / files:** `verity-verifier/crates/verity-verifier/src/verdict.rs`.
+**Problem:** `Verdict::new`, `Verdict::record` and `TrustworthyVerdict::check` are all public, so a
+caller can (1) `fold` `Outcome::Passed` over `Check::essential()` and manufacture a verdict that
+returns `is_trustworthy() == true` and passes `TrustworthyVerdict::check` with no evidence examined;
+and (2) since `Verdict::outcome` returns the **first** recorded result for a check, append a later
+`Failed` for an already-passed essential and get a value that is simultaneously trustworthy *and*
+lists a failure in `failures()`. The existing `recording_a_check_twice_keeps_the_first` test
+documents first-wins as intentional, but intentional-first-wins does not make a contradictory *trust*
+result safe.
+**Real, but correctly Medium — the containment holds.** `VerifiedClient` has a private constructor
+and **cannot** be built from a fabricated verdict, so this does not forge a network client. The
+residual exposure is downstream consumers — telemetry, audit storage, offline tooling — that rely on
+`TrustworthyVerdict`'s documented "cannot be held unless every essential passed" without going through
+`connect_verified`. For them the type is weaker than its own docs claim.
+**Recommended change (as the audit frames it):** make `Verdict::new`/`record` crate-private, expose
+read-only access publicly, and construct `TrustworthyVerdict` only from the assembled path; or, if
+external assembly is a real feature, use proof-carrying per-check result types and make
+failure/indeterminate permanently dominant over a duplicate pass. Add the contradictory-verdict
+reproduction as a permanent regression test.
+**Gate:** rust-team per ADR 0026; public-API change, reviewer sign-off.
+
+## VA-3 — Compose retrieval does not validate CID/URL targets [Low–Medium] — CONFIRMED, overlaps MI-5
+
+**Repo / files:** `verity-verifier/crates/verity-verifier/src/compose/{mod,http}.rs`.
+**Problem:** `ComposeUri::parse` accepts any non-empty bytes after `ipfs://` as a CID (`compose.rs:61-65`),
+and that value is interpolated **unencoded** into `{gateway}/ipfs/{cid}` and
+`{kubo}/api/v0/cat?arg={cid}` (`http.rs:113,158`) — so `ipfs://cid&timeout=0` becomes a Kubo query
+parameter and `ipfs://../admin` a path segment. The fetch `agent()` sets connect/total timeouts but
+**no redirect limit** (`http.rs:45-51`), and ureq follows redirects by default, so a compose fetch can
+be redirected into loopback/private targets. `HttpUrl` also GETs arbitrary `http(s)://` URLs.
+**Bounded, hence Low–Medium — not a verification bypass.** The licensed compose-hash check means a
+response from a wrong target can never become *trustworthy*; the residual is retrieval-side effects
+before the hash check — SSRF/loopback probing, Kubo query injection, redirect-to-internal, DoS — and
+only on the opt-in fetch path.
+**This is the same surface as MI-5** (file-backed compose cache + multi-gateway + gateway-down →
+`Indeterminate`), which already owns compose-fetch hardening and is unbuilt. Fold VA-3 into MI-5's
+scope: real CIDv0/CIDv1 validation, URL-safe construction with percent-encoding, redirects disabled
+(or every target revalidated against a network policy), plus malformed-CID and redirect-to-loopback
+tests. Do not spawn a separate issue.
+**Gate:** rust-team per ADR 0026, alongside MI-5.
+
+## Not findings, noted
+
+- The audit's **Clippy** `chunks_exact_to_as_chunks` failures on `binding.rs`/`quote.rs` are the
+  **pre-existing local-toolchain lint** already tracked (Homebrew rust 1.98 vs the 1.97.1 pin; the
+  files are untouched by MA-6). Handled wherever that small issue lands, not here.
+- The audit **confirmed the positive security posture**: no quote-signature, channel-binding,
+  compose-hash, or image-pinning bypass; no production `unsafe` or panic on attacker input; 288 tests
+  green; `cargo deny` clean; the RSA advisory exception judged reasonable. VA-1..VA-3 are
+  trust-boundary/API defects, not cryptographic ones.
 
 ---
 
