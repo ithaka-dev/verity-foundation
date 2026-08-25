@@ -1,6 +1,10 @@
 # Research: what Verity requires before implementation planning
 
 **Date:** 2026-07-27
+**Status:** superseded — a Phase 1 snapshot; every claim below describes 2026-07-27. The code it
+says does not exist has since been built (see [`plan.md`](plan.md) and
+[`audit-implementation-plan.md`](audit-implementation-plan.md)). Kept unedited below this line;
+destined for `records/plans/` when the root plans are archived (EA-7).
 **Phase:** 1 of Research → Plan → Annotate → Implement
 **Sources:** `docs/Verity-spec.md` (379 lines, reconciled), ADRs 0001–0010, 7 RFCs, 4 experiment
 records with committed artifacts.

@@ -358,8 +358,13 @@ Stated because a diagram that omits its own gaps invites someone to plan against
   without `--cvm-id` and updates in place with it, so the failure is one missing argument on the same
   command. It is also where MA-12 lands — the endpoint the adapter reports must be the
   TLS-passthrough form, or nothing an agent receives can be channel-bound (ADR 0027).
-- **L-01 and L-05 have never run.** Both need a registry push, which is a Tier 1 secret and
-  therefore a human's to run (C5).
+- **L-01 and L-05 have never run — and the blocker is not the one previously stated here.** L-01
+  is not executable as written: it invokes a `verity-payments` script that no longer exists, its
+  deploy/verify/use legs are printed instructions rather than assertions, and the orchestrator
+  adapters above are what it would drive. L-05 needs registry network access and **no** keys (its
+  own header), but its registry call has no timeout and its template path resolves against the
+  caller's cwd. Found by the 2026-08-23 external audit (`autit.md`); tracked as EA-2 in
+  [`../audit-implementation-plan.md`](../audit-implementation-plan.md).
 - **No newer *platform* has been verified.** L-02, L-03 and L-04 all ran on 2026-08-08 against
   guest image `dstack-0.5.9`, but **both nodes still run v0.5.7** — the version everything was
   originally measured on. The re-verification varied the guest image and held the platform

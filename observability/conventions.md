@@ -25,8 +25,12 @@ Two consequences worth stating plainly:
   dictionary attack could invert. Invariant I7 is about plaintext leaving the CVM, and a log line is
   outside the CVM.
 - **Enforcement is collector-side.** Callers are asked to behave; the collector is what makes it
-  true. See [`redaction.md`](redaction.md) — a convention that only exists in a document is a
-  convention that holds until someone is in a hurry.
+  true. See the `redaction` processor in [`collector.yaml`](collector.yaml) — a convention that only
+  exists in a document is a convention that holds until someone is in a hurry. (The 2026-08-23
+  external audit found that processor is **not currently fail-closed** — `allow_all_keys: true`, and
+  the metrics pipeline omits it entirely. Tracked as EA-1 in
+  [`../audit-implementation-plan.md`](../audit-implementation-plan.md); until it lands, this rule is
+  design intent, not enforced fact.)
 
 ---
 
@@ -60,7 +64,7 @@ Set once per process.
 |---|---|
 | `verity.license_id` | Per-unit under [ADR 0023](../docs/decisions/0023-licences-are-per-unit.md), so it identifies **one holder's entitlement**. Emitting it links every operation on that licence into a profile of one person. Emit `verity.app_manifest` and `verity.version` instead — enough to debug an app, not enough to follow a holder. |
 | `verity.holder` | An address is a pseudonym until it appears next to enough else. |
-| anything ending `_key`, `_secret`, `_token` | See [`redaction.md`](redaction.md). |
+| anything ending `_key`, `_secret`, `_token` | Stripped by the `attributes/strip-secrets` processor in [`collector.yaml`](collector.yaml). |
 
 Where an operation genuinely cannot be debugged without a licence, emit
 `verity.license_fp` — a domain-separated fingerprint, the same construction the app template uses.

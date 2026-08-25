@@ -3,6 +3,8 @@
 **Status:** active — CR-1, CR-2, MA-1, MA-2, MA-6 (changes 1–2), MA-7, MA-8, FI-1 through FI-5 and PRE-1 are landed;
 see each issue's commit for the findings and accepted limits. Four issues found while implementing are
 recorded under **FI**, plus **PRE-1** found while implementing FI-3, and **MA-12** was split out of CR-2.
+A second source arrived 2026-08-23: an external audit of this repo (`autit.md`, committed `c797d5c`),
+tracked below as **EA-1 through EA-7** — EA-7's documentation drift is corrected, the rest are open.
 **Source review:** [`records/reviews/2026-08-09-system-design-review.md`](records/reviews/2026-08-09-system-design-review.md)
 **Reviewed commit:** `7c26cd4` (verity-foundation) + sibling HEADs of 2026-08-09
 **Scope:** every finding the panel agreed on — 2 Critical, 11 Major, 7 Minor.
@@ -972,6 +974,161 @@ Three things this issue established that outlive it:
 (`ChainReader` and `Platform` have one implementation each, both in `tests/`), so it has nothing to
 guard yet. It will need the same guard the moment it acquires one, and that is a line in the adapter
 work rather than an issue of its own.
+
+---
+
+# External audit findings — 2026-08-23 (`autit.md`), not from the 2026-08-09 review
+
+An external (Codex) audit of `verity-foundation` at `5a97240`, committed as `autit.md` in `c797d5c`.
+It audited the **control centre itself** — its gates, harnesses and documentation — so most findings
+are about things that check, not things that ship. Numbered `EA-n`, following the audit's own
+bite-sized follow-up plan so the two documents cross-reference cleanly.
+
+Reconciled against the tree at `577fc12` on 2026-08-25: one finding (the ADR index missing 0034's
+row) had already been fixed when MA-6 landed; the P3 documentation drift was corrected the same day
+(see EA-7); everything else was re-verified live and is open. Per the audit's own instruction, each
+item is its own issue and review gate — do not combine EA-1, the orchestrator adapters, and EA-3
+into one change.
+
+## EA-1 — Telemetry is not fail-closed as claimed [P1]
+
+**Repo / files:** `observability/collector.yaml`; `observability/conventions.md`.
+**Problem:** the config's own comment says unknown attributes are dropped, but the redaction
+processor sets `allow_all_keys: true` — which *disables* the allowed-key list — and the **metrics
+pipeline does not include the redaction processor at all** (`processors: [memory_limiter,
+attributes/strip-secrets, batch]`). Arbitrary attributes therefore pass unless they happen to match
+a small value-denylist, contradicting `conventions.md`'s closed safe-set and the claim that
+collector-side enforcement protects I7 when a caller emits holder data accidentally. (The two dead
+links to a never-written `redaction.md` were repointed at `collector.yaml` on 2026-08-25; the
+enforcement itself is this issue. Both documents now carry an honest "intent, not fact" caveat
+naming EA-1 — remove those caveats as part of this fix, not before.)
+**Change:** enumerate the conventions' closed attribute set as the allow-list
+(`allow_all_keys: false` + `allowed_keys`), and put redaction on the traces, metrics **and** logs
+pipelines alike.
+**Acceptance criteria / tests:** a hostile span, a hostile metric and a hostile log line, each
+carrying an unknown holder-data attribute, are fed through the **real pinned collector binary** —
+not a YAML lint — and the exported payload must not contain the attribute. Per
+[the taxonomy record](records/experiments/2026-08-15-a-taxonomy-of-gates-that-do-not-guard.md),
+the fixture must be seen to **leak on the current config first**, then be blocked by the
+replacement. The gate is untrusted until both halves are observed.
+**Gate:** no language team (YAML + fixtures); reviewer sign-off per ADR 0018; seen-to-fail
+discipline is the point of the issue.
+
+## EA-2 — Honest milestone status: L-01 is unbuilt, L-05 is mischaracterized [P1]
+
+**Repo / files:** `closed-loop/{01-full-loop.sh,05-publishing-refuses-tags.sh}`; (docs already
+corrected: `closed-loop/README.md`, `docs/ARCHITECTURE.md`).
+**Problem:** L-01 cannot perform the milestone it names — it invokes
+`verity-payments/script/e2e-base-sepolia.ts`, which does not exist (the file is
+`script/e2e-testnet.ts`); its deploy/verify/use legs are printed instructions, not commands or
+assertions; and the production `ChainReader`/`Platform` adapters it would drive are unbuilt. The
+"written, merely waiting for credentials" story was therefore inaccurate — the blocker is missing
+code, not secrets. L-05's documented blocker contradicted its own header (registry network access,
+**no** keys), its registry/Docker call has no timeout (the audit's run hung >90s and was killed,
+not counted as a pass), and it resolves `../../verity-app-template/...` against the caller's cwd
+rather than the script's location.
+**Change:** the documentation half landed 2026-08-25 (README and ARCHITECTURE now state the true
+blockers). Remaining, in this issue: fix L-05's path resolution (resolve from the script's own
+directory) and bound its registry call with a timeout; fix L-01's stale script path and make each
+leg state explicitly whether it executes or merely describes. **L-01 as a genuinely executable
+harness stays blocked on the orchestrator adapters** — already named the largest untested path in
+`ARCHITECTURE.md` — which need their own approved plan (Rust; rust-team per ADR 0026) and must not
+be smuggled in here.
+**Acceptance criteria:** L-05 reaches a verdict from any invocation directory and cannot hang
+unbounded; L-01 refuses loudly at any leg it cannot execute instead of printing instructions that
+look like progress; no document claims L-01 is runnable.
+**Gate:** shell — no team; the adapter work is a separate, explicitly scheduled Rust issue.
+
+## EA-3 — Per-commit meta-CI: most of this repo has no workflow at all [P1]
+
+**Repo / files:** `.github/workflows/` (new workflow).
+**Problem:** `deployments.yml` filters on `deployments/** observability/**` and `services.yml` on
+`services/**` — so commits touching `docs/`, `records/`, `closed-loop/` or the root documents get
+**no CI run of any kind**, and "every push is verified" is unenforceable for exactly the file class
+a control-center repo is made of. The audited HEAD (`5a97240`) had no CI result; the broken links,
+missing index row and stale statuses this audit found are defects the current CI structurally
+cannot see.
+**Change:** one workflow with **no path filter**, checking: markdown links resolve; every
+`docs/decisions/NNNN-*.md` has a row in the decisions README; status lines exist where
+`docs/README.md` requires them; `bash -n` + ShellCheck over `closed-loop/`; JSON/YAML parse checks;
+`promtool` over `alerts.yaml`; and EA-1's negative fixtures once they exist.
+**Acceptance criteria / tests:** each check is written **from a captured failure** — the audit's
+findings are the negative fixtures (a dead link, a missing index row, a statusless doc) — and each
+is demonstrated red before the defect class is fixed or on a deliberately broken input. The
+workflow triggers on every push to any path.
+**Gate:** reviewer sign-off; CI-verification discipline applies to the new workflow itself (read
+the step list; suspicious speed is a failure signal).
+
+## EA-4 — The C1 dependency gate accepts forbidden dependencies [P1]
+
+**Repo / files:** `services/wayfinder/check-navigation-only.py`.
+**Problem:** the checker parses Cargo manifests with line-oriented regular expressions. It rejects
+a direct `reqwest = "0.12"`, but the audit demonstrated three accepted bypasses, each exiting 0 and
+reporting no trust-path dependency: `transport = { package = "reqwest", version = "0.12" }`
+(rename), `reqwest.workspace = true` (workspace inheritance), and a `[dependencies.reqwest]`
+subtable. High coverage and a green CI job do not compensate for recognizing only a subset of Cargo
+syntax — this is the FI-1 lesson again: a check that must understand source has to parse it.
+**Change:** parse the manifest as TOML structurally; resolve `package =` renames and workspace
+dependency inheritance; check all three dependency-table shapes; keep the audit's three bypasses as
+committed negative fixtures; and narrow the script's self-description to a **dependency-policy
+gate** — std-library networking and `Command` cross C1 without adding any crate, so complete proof
+of C1 is not on offer and the gate must not claim it.
+**Acceptance criteria:** all three bypass forms are refused, each fixture seen to pass (bypass) the
+current checker before the fix; the honest scope statement is in the script's own text.
+**Gate:** Python — python-team per ADR 0026; reviewer sign-off.
+
+## EA-5 — Wayfinder's binding-decision map is stale and its C3 test proves nothing [P2]
+
+**Repo / files:** `services/wayfinder/src/map.rs` and its tests.
+**Problem:** the map still recommends **superseded ADR 0016** as binding and omits the decisions
+that actually bind current work — channel binding (0027/0028), the three-identity reconciliation
+(0029), redeem-only (0030), testnet enforcement (0032), instance-binding deferral (0034), the
+disposition contract (0035). Its C3 test asserts only that each repository *name* appears somewhere
+in `CLAUDE.md`, so a plausible-but-obsolete answer passes — a navigation service confidently
+steering agents at superseded decisions is worse than none.
+**Change:** refresh each repo's `binding_decisions` against the current ADR set; make the C3 test
+compare the full table — status, role, language, binding decisions — against `CLAUDE.md` §0, not
+name presence.
+**Acceptance criteria:** the map cites no superseded ADR as binding; the strengthened test is seen
+to fail when a row is deliberately drifted, then passes.
+**Gate:** Rust — rust-team per ADR 0026 (what binds each repo is being *chosen*, not transcribed);
+reviewer sign-off.
+
+## EA-6 — ADR 0017 is not represented by repository licence files [P2]
+
+**Repo / files:** all six active repos; only `verity-verifier` has a root `LICENSE`.
+**Problem:** ADR 0017 requires AGPL-3.0-only uniformly. `verity-foundation`, `verity-contracts`,
+`verity-orchestrator`, `verity-payments` and `verity-app-template` express the intent through
+Cargo/package metadata or SPDX headers only — none carries the complete licence text at repository
+root, which is the form that actually grants the licence to a recipient. Re-verified 2026-08-25:
+still true for all five.
+**Change:** add the exact AGPL-3.0-only text at each repository root; verify package metadata and
+SPDX headers agree with it. The app template matters most — it is the artifact third parties copy,
+and ADR 0017 notes the copyleft stance is effectively irreversible once outside contributions
+arrive.
+**Acceptance criteria:** every active repository has the complete licence file and consistent
+metadata.
+**Gate:** mechanical under ADR 0026's test (ADR 0017 already made every choice), but it spans five
+repos — cross-repo checkpoint; land repo-by-repo with CI verified per push.
+
+## EA-7 — Documentation reconciliation [P3] — CORRECTED 2026-08-25
+
+**Problem (as found):** dead `redaction.md` links; the decisions README missing ADR 0034;
+`observability/README.md` claiming dashboards unwritten while two exist, and contradicting itself
+on whether licence IDs are safe to emit; `closed-loop/README.md` saying "Nothing here has been run"
+after recording runs, conflating guest-image and node-runtime versions, and claiming boot
+measurements never ran (contradicted by the 2026-08-14 record); `research.md` saying no code exists
+anywhere; `test-plan.md` marked draft after completion; status lines missing on several documents.
+**Done 2026-08-25:** the ADR 0034 index row was already fixed at `577fc12`; the rest corrected in
+the commit introducing this section — redaction links repointed at `collector.yaml`,
+`observability/README.md` (dashboards, licence-ID rule, EA-1 caveat), `closed-loop/README.md`
+rewritten against the experiment records with 06–09 added to the table, `docs/ARCHITECTURE.md`'s
+L-01/L-05 line restated, `research.md` marked as a dated snapshot, `test-plan.md` marked completed.
+**Remaining, deliberately not done here:** the status-line sweep across every README/index (fold
+into EA-3 — write the check first and let *it* enumerate the misses, rather than sweeping by hand
+and then writing a check that has never failed); and archiving the completed root plans
+(`research.md`, `test-plan.md`, eventually `plan.md`) into `records/plans/` — an operator call on
+timing, since `plan.md`'s Phase 4 is still open.
 
 ---
 

@@ -1,6 +1,9 @@
 # Test plan: raising coverage where it changes outcomes
 
-**Status:** draft, 2026-08-02
+**Status:** completed — written 2026-08-02 as a draft and never restatused; the coverage work it
+planned landed during 2026-08 (see the test counts in [`plan.md`](plan.md)'s phase table and the
+FI/PRE entries in [`audit-implementation-plan.md`](audit-implementation-plan.md)). Retained as the
+record of what was planned; destined for `records/plans/` when the root plans are archived (EA-7).
 **Scope:** unit, property, invariant and mutation testing. Functional and end-to-end work is
 deliberately out of scope here — Phase 4 covers it, and L-04 has already run.
 

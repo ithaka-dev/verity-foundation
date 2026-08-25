@@ -1,9 +1,20 @@
 # closed-loop/
 
-**Status:** L-02, L-03 and L-04 have all run and passed on **dstack 0.5.9** (2026-08-08); L-04 also
-passed on 0.5.7 (2026-07-31).
-L-01 and L-05 are written and never executed — both need a registry push, which is a Tier 1 secret
-(C5) and therefore a human's to run. The contracts they run against *are* deployed —
+**Status:** active. L-02, L-03 and L-04 have run and passed — 2026-08-08 with **guest image
+`dstack-0.5.9` on nodes still running node runtime v0.5.7** (the two version numbers move
+independently; see [the correction](../records/experiments/2026-08-08-correction-guest-image-is-not-the-node-version.md)) —
+and L-04 first passed 2026-07-31 on 0.5.7, then ran again 2026-08-14 **with** a boot reference.
+The channel-binding and capture harnesses 06–09 have all run — see the table.
+
+L-01 has **never run and cannot run as written**: it invokes a `verity-payments` script that no
+longer exists (`e2e-base-sepolia.ts`; the real file is `script/e2e-testnet.ts`), its
+deploy/verify/use legs are printed instructions rather than assertions, and the orchestrator
+`ChainReader`/`Platform` adapters it would drive are unbuilt. Its blocker is missing code, not
+missing credentials (2026-08-23 external audit; EA-2 in
+[`../audit-implementation-plan.md`](../audit-implementation-plan.md)). L-05 is written and unrun;
+per its own header it needs registry network access and **no** keys — this file previously said a
+Tier 1 secret was required, which was wrong. The contracts the harnesses run against *are*
+deployed —
 see [`../records/experiments/2026-07-30-first-testnet-deployment.md`](../records/experiments/2026-07-30-first-testnet-deployment.md).
 
 The end-to-end runs that prove the system works as one thing rather than as six that each pass their
@@ -44,18 +55,23 @@ because the failure is silent data loss. An experiment written up in prose canno
 is the genuinely untested one**: both experiments exercised an in-place *update*, and a restart is a
 different event.
 
-## Nothing here has been run
+## What a run needs
 
-Every script below needs things an agent does not have (**C5**):
+> This section originally said "Nothing here has been run." That has been false since 2026-07-31;
+> the runs are in the table below and in `records/experiments/`. Corrected 2026-08-25 per the
+> external audit rather than silently — the heading itself was the kind of stale claim it warned about.
+
+Most scripts here need things an agent does not have (**C5**):
 
 - ~~a funded testnet key~~ — done, Ethereum Sepolia,
 - ~~deployed `LicenseToken` and `AppManifest`~~ — done, addresses in the experiment record,
-- ~~a Phala Cloud account with TDX capacity~~ — available; L-04 has used it,
+- ~~a Phala Cloud account with TDX capacity~~ — available; L-02/03/04, 07, 08 and 09 have used it,
 - testnet USDC, for the payment leg only.
 
-**A human runs these.** The scripts read everything from the environment, so no key is ever written
-into a file here or seen by an agent. Until one has been run, treat the milestone as unproven —
-these harnesses assert the right things, and asserting is not observing.
+**A human runs the ones that spend money or touch credentials.** The scripts read everything from
+the environment, so no key is ever written into a file here or seen by an agent. **The full-loop
+milestone (L-01) remains unproven** — the runs below prove individual properties, and a set of
+passing parts is not an observed whole.
 
 When a run happens, its output belongs in `records/experiments/` as a dated record. That is the
 archive; this is the apparatus.
@@ -64,12 +80,15 @@ archive; this is the apparatus.
 
 | Script | What it proves | Why it is separate |
 |---|---|---|
-| `01-full-loop.sh` | discover → pay → mint → deploy → verify → use | The milestone. |
+| `01-full-loop.sh` | discover → pay → mint → deploy → verify → use | The milestone. **Not executable as written** — see the status line above; EA-2. |
 | `02-continuity-restart.sh` | keys survive a kill/restart | Exercises key **stability**. **Run 2026-08-08.** |
-| `03-continuity-upgrade.sh` | `app_id` and state survive an in-place upgrade | Exercises `app_id` **preservation** — a different mechanism, so passing 02 says nothing about 03. **Run 2026-08-08 on dstack 0.5.9**, which is the re-verification ADR 0008 requires after a version bump. |
-| `04-refuses-on-mismatch.sh` | an agent refuses a deliberately broken compose | I1. The one that proves the guarantee is real rather than merely configured. **Run 2026-07-31 (0.5.7) and 2026-08-08 (0.5.9), both directions.** `boot_measurements` has never
-run on either — the runner has no flag for an OS image reference. |
-| `05-publishing-refuses-tags.sh` | the publishing path resolves tags to digests and refuses a tag | I8, ADR 0007. |
+| `03-continuity-upgrade.sh` | `app_id` and state survive an in-place upgrade | Exercises `app_id` **preservation** — a different mechanism, so passing 02 says nothing about 03. **Run 2026-08-08 with guest image `dstack-0.5.9` on node runtime v0.5.7**, which is the re-verification ADR 0008 requires after a guest-image bump. |
+| `04-refuses-on-mismatch.sh` | an agent refuses a deliberately broken compose | I1. The one that proves the guarantee is real rather than merely configured. **Run 2026-07-31 (0.5.7) and 2026-08-08 (0.5.9), both directions; run again 2026-08-14 with `BOOT_REFERENCE`, exercising boot measurements** ([record](../records/experiments/2026-08-14-l04-with-channel-binding-and-the-mrtd-correction.md)). |
+| `05-publishing-refuses-tags.sh` | the publishing path resolves tags to digests and refuses a tag | I8, ADR 0007. **Unrun.** Needs registry network access, no keys; its registry call has no timeout and it resolves the template path relative to the caller's cwd — both tracked in EA-2. |
+| `06-refuses-relayed-endpoint.sh` | a genuine quote presented over somebody else's connection is refused (channel binding) | CR-1's red-team check. Needs no CVM — replays recorded fixtures. **Seen to fail pre-fix, passing since; last run green 2026-08-23** (external audit). |
+| `07-capture-ratls-pair.sh` | capture harness: a matched (RA-TLS cert, TDX quote) pair from live hardware | Produces the fixtures 06 replays. **Run 2026-08-14** ([record](../records/experiments/2026-08-14-channel-binding-end-to-end-on-live-hardware.md)). |
+| `08-gateway-tls-termination.sh` | whose certificate a client actually sees on each gateway endpoint form | CR-1 prerequisite; the measurement behind MA-12 and ADR 0027. **Steps 7–11 ran green on hardware 2026-08-14.** |
+| `09-capture-boot-reference.sh` | capture harness: boot-measurement reference from a second node | MA-6 change 3's n=2 precondition. **Run 2026-08-22** ([record](../records/experiments/2026-08-22-boot-reference-is-node-independent.md)). |
 
 **02 and 03 look like the same test and are not.** A restart re-derives keys for an unchanged
 `app_id`; an upgrade keeps `app_id` while everything about the configuration changes. An
