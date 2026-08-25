@@ -9,9 +9,10 @@ Two external audits also arrived, both now archived under
 tracked below as **EA-1 through EA-7** (EA-7's documentation drift is corrected, the rest open); and
 one of `verity-verifier`
 ([2026-08-25](records/audits/verity-verifier/2026-08-25-verifier-audit.md), commit `163e667`),
-tracked as **VA-1 through VA-3** — all three reproduced and confirmed 2026-08-25. **VA-1 landed**
-(`verity-verifier` `32307b1`) and **VA-2 landed** (`2ecbedf`), each via a full rust-team cycle per
-ADR 0026; **VA-3 remains open**, folded into MI-5.
+tracked as **VA-1 through VA-3** — all three reproduced and confirmed 2026-08-25, and **all three now
+landed** via full rust-team cycles per ADR 0026: VA-1 (`verity-verifier` `32307b1`), VA-2 (`2ecbedf`),
+VA-3 (`28ebab0`) with its folded MI-5 multi-gateway half (`84991d2`). **MI-5's file-backed cache is
+deferred** (designed, unbuilt); two small compose follow-ups are recorded under VA-3.
 **Source review:** [`records/reviews/2026-08-09-system-design-review.md`](records/reviews/2026-08-09-system-design-review.md)
 **Reviewed commit:** `7c26cd4` (verity-foundation) + sibling HEADs of 2026-08-09
 **Scope:** every finding the panel agreed on — 2 Critical, 11 Major, 7 Minor.
@@ -1265,11 +1266,56 @@ response from a wrong target can never become *trustworthy*; the residual is ret
 before the hash check — SSRF/loopback probing, Kubo query injection, redirect-to-internal, DoS — and
 only on the opt-in fetch path.
 **This is the same surface as MI-5** (file-backed compose cache + multi-gateway + gateway-down →
-`Indeterminate`), which already owns compose-fetch hardening and is unbuilt. Fold VA-3 into MI-5's
-scope: real CIDv0/CIDv1 validation, URL-safe construction with percent-encoding, redirects disabled
-(or every target revalidated against a network policy), plus malformed-CID and redirect-to-loopback
-tests. Do not spawn a separate issue.
-**Gate:** rust-team per ADR 0026, alongside MI-5.
+`Indeterminate`), so the two were run as one rust-team cycle and landed as two commits.
+
+**LANDED (VA-3 hardening)** — `verity-verifier` `28ebab0`, CI green 8/8 (mutation-score and
+real-IPFS-fetch legs included). A full rust-team cycle per ADR 0026 (design → critique → consensus →
+implementation → fresh-eyes `rust-reviewer` LGTM → architect **DESIGN-CONFORMS**). The fix, deciding
+each design call deliberately:
+- **CID validation is dependency-free**, not a `cid`/`multibase` crate. `ComposeUri::Ipfs` now carries
+  a `Cid` newtype (private inner, only constructor `Cid::parse`) enforcing an **allowlist** charset
+  `[A-Za-z0-9_-]` — an allowlist over a lexical property has no forgotten-dangerous-byte case, so every
+  URL-significant/control/non-ASCII byte is rejected by omission. The invariant is unbypassable (no
+  public field, no serde/`From`/`FromStr`). Honest about what it establishes: interpolation-safety,
+  not CID validity. Chosen over a CID crate to keep multibase/multihash surface off the crown jewel;
+  the FI-1 "parse don't scan" lesson is about *semantics* and doesn't apply to a byte-level property.
+- **Percent-encoding (RFC 3986 unreserved) at both sinks** (gateway path, Kubo `?arg=` query) as
+  defense-in-depth, so a future parse relaxation can't reopen injection.
+- **`max_redirects(0)` on the compose agent**, mirroring `connect`'s existing posture, with a matching
+  `mutate.sh` mutant that the redirect tests kill.
+- **`HttpUrl` kept + documented, no SSRF blocklist** (the sibling sources legitimately target loopback,
+  so a blocklist can't tell a probe from a deployment, and DNS rebinding defeats it) — a separable
+  `fetch-http-url` feature gate is raised as a documented recommendation, not built.
+`ComposeUri::Ipfs(String)→Ipfs(Cid)` is a deliberate breaking change (0.0.0). Seen-to-fail: the
+traversal and query-injection reproductions were captured red on the unpatched tree via a raw-request
+recorder, then made permanent green tests.
+
+**LANDED (MI-5 multi-gateway)** — `verity-verifier` `84991d2`. A `Fallback<S>` source —
+`Fallback::new(first, rest)`, non-empty by construction — tries sources in order, first success wins,
+and **only all-down** surfaces as `Indeterminate` via the *existing* `From<&FetchError>` mapping
+(reused, wildcard-free). A minimal blanket `impl Source for Box<S>` enables a heterogeneous chain,
+pinned by a two-concrete-type test. 7 call-counter tests; no mutant (a `Fallback` regression fails
+closed, not open, so it's a liveness feature, not a trust boundary).
+
+**MI-5's file-backed cache is deliberately DEFERRED, not dropped** — a scoped subset of MI-5 as
+boarded. Architect and developer independently judged its only value (restart-survival) not worth its
+atomicity/on-disk-path-safety complexity with no concrete need named; the gateway-down→`Indeterminate`
+half already existed via the `Unestablished` mapping. The on-disk-tampering/invalidation questions are
+*answered* in the design (`team/va-3-mi-5/design.md` §4.3), so it's specified if a real offline need
+appears. **Open, designed-but-unbuilt.**
+
+**Two follow-ups surfaced in VA-3 review, deliberately not built** (`team/va-3-mi-5/design.md` §10):
+- **`ComposeUri::Http(String)` is still publicly constructible** with an arbitrary string, so the
+  enum's "parsed not passed as a string" doc holds for the `Ipfs` arm but not `Http`. Low harm (fetched
+  verbatim, never interpolated; ureq rejects non-http schemes; redirects off) — a validated `Http`
+  newtype is a follow-up, outside VA-3's injection/traversal/redirect scope.
+- **`mutate.sh --quick` silently mis-scores feature-gated mutants** (incl. the new compose one) as
+  SURVIVED, because it drops `--all-features` so the file isn't compiled, and its header claims a skip
+  that doesn't happen. Pre-existing, shared by all connect/TLS mutants — a real gate-integrity gap
+  worth its own issue.
+Also noted in passing: five `attest`/`verify` integration-test files lack a `#[cfg(feature="attest")]`
+guard, so `--no-default-features --features fetch` fails to compile workspace-wide on the untouched
+tree. Pre-existing, unrelated, worth a small follow-up.
 
 ## Not findings, noted
 
