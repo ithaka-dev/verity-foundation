@@ -1,3 +1,10 @@
+<!--
+Filed as a record. Externally produced (Codex); committed to the repo root as `autit.md` in
+`c797d5c` ("Codex Input"), relocated here 2026-08-25 into the audit archive. Content below is
+verbatim — records are write-once. Triage lives on the control-center board as EA-1..EA-7 in
+`../../../audit-implementation-plan.md`.
+-->
+
 # Project audit — 2026-08-23
 
 **Status:** completed audit snapshot

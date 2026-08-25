@@ -3,11 +3,15 @@
 **Status:** active — CR-1, CR-2, MA-1, MA-2, MA-6 (changes 1–2), MA-7, MA-8, FI-1 through FI-5 and PRE-1 are landed;
 see each issue's commit for the findings and accepted limits. Four issues found while implementing are
 recorded under **FI**, plus **PRE-1** found while implementing FI-3, and **MA-12** was split out of CR-2.
-Two external audits also arrived: one of this repo (`autit.md`, committed `c797d5c`), tracked below
-as **EA-1 through EA-7** (EA-7's documentation drift is corrected, the rest open); and one of
-`verity-verifier` at `163e667` (`verifier-audit.md`, untracked), tracked as **VA-1 through VA-3** —
-all three reproduced and confirmed 2026-08-25, none fixed (rust-team per ADR 0026; VA-1 also needs an
-operator call on ADR 0014).
+Two external audits also arrived, both now archived under
+[`records/audits/`](records/audits/): one of this repo
+([2026-08-23](records/audits/verity-foundation/2026-08-23-project-audit.md), commit `5a97240`),
+tracked below as **EA-1 through EA-7** (EA-7's documentation drift is corrected, the rest open); and
+one of `verity-verifier`
+([2026-08-25](records/audits/verity-verifier/2026-08-25-verifier-audit.md), commit `163e667`),
+tracked as **VA-1 through VA-3** — all three reproduced and confirmed 2026-08-25, none fixed
+(rust-team per ADR 0026; VA-1's fix is under way after the operator chose to enforce, not supersede
+ADR 0014).
 **Source review:** [`records/reviews/2026-08-09-system-design-review.md`](records/reviews/2026-08-09-system-design-review.md)
 **Reviewed commit:** `7c26cd4` (verity-foundation) + sibling HEADs of 2026-08-09
 **Scope:** every finding the panel agreed on — 2 Critical, 11 Major, 7 Minor.
@@ -980,9 +984,11 @@ work rather than an issue of its own.
 
 ---
 
-# External audit findings — 2026-08-23 (`autit.md`), not from the 2026-08-09 review
+# External audit findings — 2026-08-23 project audit, not from the 2026-08-09 review
 
-An external (Codex) audit of `verity-foundation` at `5a97240`, committed as `autit.md` in `c797d5c`.
+An external (Codex) audit of `verity-foundation` at `5a97240`, archived at
+[`records/audits/verity-foundation/2026-08-23-project-audit.md`](records/audits/verity-foundation/2026-08-23-project-audit.md)
+(committed to the repo root as `autit.md` in `c797d5c`, relocated into the audit archive 2026-08-25).
 It audited the **control centre itself** — its gates, harnesses and documentation — so most findings
 are about things that check, not things that ship. Numbered `EA-n`, following the audit's own
 bite-sized follow-up plan so the two documents cross-reference cleanly.
@@ -1138,10 +1144,11 @@ timing, since `plan.md`'s Phase 4 is still open.
 # External verifier audit — 2026-08-24/25 (`verity-verifier/verifier-audit.md`)
 
 A second external audit, this one of **`verity-verifier` at `163e667`** (the MA-6 landing commit),
-produced independently and appearing untracked in that repo — same tool-output pattern as `autit.md`.
-417 lines; three findings. **Fate of the file is an open operator decision** (commit as a record,
-keep untracked, or discard); it is cited here as untracked. Numbered `VA-1..VA-3`, mapping to the
-audit's own `VV-01..VV-03`.
+produced independently and appearing untracked in that repo. 417 lines; three findings. Now archived
+at
+[`records/audits/verity-verifier/2026-08-25-verifier-audit.md`](records/audits/verity-verifier/2026-08-25-verifier-audit.md)
+(operator chose to keep it as a record; the untracked copy in `verity-verifier` was removed once
+archived). Numbered `VA-1..VA-3`, mapping to the audit's own `VV-01..VV-03`.
 
 **All three were reproduced on 2026-08-25, then the reproduction removed** (the seen-to-fail step the
 handoff required; the auditor left no artifact either). VA-1's unit core and both VA-2 parts run on
@@ -1179,12 +1186,17 @@ Both hold. The audit found a *different* override, one layer up, that the job ne
 "gate measuring the wrong thing" / overclaiming-name pattern CLAUDE.md and
 [the taxonomy](records/experiments/2026-08-15-a-taxonomy-of-gates-that-do-not-guard.md) warn about.
 The job's name promises more than its steps check.
-**Operator decision required before any fix.** Either (a) remove `TcbPolicy` from the public API and
-enforce the single project decision inside the verifier, recording the real Intel status + advisory
-IDs in every verdict including success; **or** (b) if named degraded statuses are genuinely wanted,
-supersede ADR 0014 first and represent the accepted-policy in every verdict. Not agent's to choose.
-**Gate:** rust-team per ADR 0026; the CI job should also be renamed/extended so its name stops
-overclaiming (fold into the fix or EA-3). Seen-to-fail regression test is mandatory.
+**Operator decision (2026-08-25): enforce, do not supersede.** Remove `TcbPolicy` from the public
+API (`verify`, `ConnectRequest`, the connection APIs), enforce the single project-defined decision
+inside the verifier, and record the real Intel status + advisory IDs in every verdict **including on
+success** — closing both halves: the knob is gone (rule 2) and the actual status is always visible
+(rule 1). ADR 0014 stands unchanged; the fix realizes it. A superseding ADR was explicitly not
+chosen — named degraded statuses are not wanted.
+**Gate:** rust-team per ADR 0026 (architect → developer → blind reviewer) — **in progress**. The
+CI job "TCB enforcement is not overridable" must be renamed/extended in the same change so its name
+stops overclaiming, and must be **seen to fail** against the pre-fix tree (a test asserting no public
+route accepts an arbitrary status name; a negative test that every degraded/revoked status stays
+untrustworthy through the full assembled API). Seen-to-fail regression test is mandatory.
 
 ## VA-2 — Public verdict construction defeats the proof-carrying type [Medium] — CONFIRMED
 

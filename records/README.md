@@ -20,6 +20,7 @@ current. `records/` describes how things **were** and is never revised.
 | [`changes/`](changes/) | Server and infrastructure change history. Every change to a deployed machine. | `YYYY-MM-DD-kebab-title.md` |
 | [`incidents/`](incidents/) | Post-incident analysis. Blameless, specific, with the timeline. | `YYYY-MM-DD-kebab-title.md` |
 | [`experiments/`](experiments/) | Agentic-loop experiments: what was run autonomously, under what setup, and what came out. Including the failures — especially the failures. | `YYYY-MM-DD-kebab-title.md` |
+| [`audits/`](audits/) | Security and correctness audits of Verity repos, internal or external. One subfolder per repo. The audit is the finding; disposition is tracked on the board in [`../audit-implementation-plan.md`](../audit-implementation-plan.md). | `<repo>/YYYY-MM-DD-kebab-title.md` |
 
 Templates live in each directory as `TEMPLATE.md`.
 

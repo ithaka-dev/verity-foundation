@@ -363,7 +363,9 @@ Stated because a diagram that omits its own gaps invites someone to plan against
   deploy/verify/use legs are printed instructions rather than assertions, and the orchestrator
   adapters above are what it would drive. L-05 needs registry network access and **no** keys (its
   own header), but its registry call has no timeout and its template path resolves against the
-  caller's cwd. Found by the 2026-08-23 external audit (`autit.md`); tracked as EA-2 in
+  caller's cwd. Found by the 2026-08-23 external audit
+  ([`records/audits/verity-foundation/2026-08-23-project-audit.md`](../records/audits/verity-foundation/2026-08-23-project-audit.md));
+  tracked as EA-2 in
   [`../audit-implementation-plan.md`](../audit-implementation-plan.md).
 - **No newer *platform* has been verified.** L-02, L-03 and L-04 all ran on 2026-08-08 against
   guest image `dstack-0.5.9`, but **both nodes still run v0.5.7** — the version everything was
