@@ -1192,11 +1192,19 @@ inside the verifier, and record the real Intel status + advisory IDs in every ve
 success** — closing both halves: the knob is gone (rule 2) and the actual status is always visible
 (rule 1). ADR 0014 stands unchanged; the fix realizes it. A superseding ADR was explicitly not
 chosen — named degraded statuses are not wanted.
-**Gate:** rust-team per ADR 0026 (architect → developer → blind reviewer) — **in progress**. The
-CI job "TCB enforcement is not overridable" must be renamed/extended in the same change so its name
-stops overclaiming, and must be **seen to fail** against the pre-fix tree (a test asserting no public
-route accepts an arbitrary status name; a negative test that every degraded/revoked status stays
-untrustworthy through the full assembled API). Seen-to-fail regression test is mandatory.
+
+**LANDED** — `verity-verifier` `32307b1`, via a full `rust-team` cycle per ADR 0026 (architect design
+→ developer critique → closed consensus, two AMENDs conceded → implementation → fresh-eyes
+`rust-reviewer` with no design context, **LGTM** after one fix round of six findings → architect
+**DESIGN-CONFORMS**). `TcbPolicy` is deleted; `verify`/`verify_quote`/`ConnectRequest`(`::new`) drop
+the `tcb` arg (arity 4→3); UpToDate-only is enforced structurally via a single `pub(crate)`
+`is_tcb_acceptable` predicate; the real Intel status + advisory IDs are legible on every verdict where
+a signature verified — including on a passing `UpToDate` — via a verdict-level `AttestedTcb`
+provenance type, with the ADR 0035 `Outcome` enum untouched. The CI job was renamed off its
+overclaiming name and gains a reintroduced-knob grep (which was itself caught **failing open** in
+review — GNU grep exit 2 on a missing glob path read as "no match" — and hardened). Findings and the
+full red-first seen-to-fail transcripts are in `32307b1`'s commit message (ADR 0019). Gates green
+locally (fmt/clippy/doc clean, `cargo test --all-features` 297/297); wasm32 verifies in CI only.
 
 ## VA-2 — Public verdict construction defeats the proof-carrying type [Medium] — CONFIRMED
 
