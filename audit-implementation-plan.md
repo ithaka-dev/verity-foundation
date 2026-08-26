@@ -1121,6 +1121,20 @@ metadata.
 **Gate:** mechanical under ADR 0026's test (ADR 0017 already made every choice), but it spans five
 repos — cross-repo checkpoint; land repo-by-repo with CI verified per push.
 
+**LANDED** — 2026-08-26. The complete FSF GNU AGPLv3 text (verbatim, sha256
+`0d96a4ff68ad6d4b6f1f30f713b18d5184912ba8dd389f86aa7710db079abcb0` — the canonical SPDX text, matching
+the copy already in `verity-verifier`) added at the root of all five repos that lacked it:
+`verity-foundation` `b9b82e3`, `verity-contracts` `d90e00f`, `verity-orchestrator` `ee0fbed`,
+`verity-payments` `85b9150`, `verity-app-template` `7a49bd5` (which had to be cloned — it was not on
+this machine). All six root `LICENSE` files are now byte-identical. **Metadata was already consistent**
+and needed no change: `AGPL-3.0-only` in every `Cargo.toml` (orchestrator, verifier, foundation's
+`services/wayfinder`), `package.json` (payments, the template's `ts/`), `pyproject.toml` (the
+template's `py/`), and the SPDX headers in `verity-contracts/src/`. **Scope note:** the `verity`
+front-door repo (GitHub Pages narrative, "cloned, no commits" in §0, and not cloned on this machine)
+was **not** included — the audit scoped EA-6 to the six active product repos, and adding a licence as
+effectively the first commit to a public narrative site is a separate call worth confirming rather
+than assuming.
+
 ## EA-7 — Documentation reconciliation [P3] — CORRECTED 2026-08-25
 
 **Problem (as found):** dead `redaction.md` links; the decisions README missing ADR 0034;
