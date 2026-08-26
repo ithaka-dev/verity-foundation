@@ -1069,6 +1069,32 @@ workflow triggers on every push to any path.
 **Gate:** reviewer sign-off; CI-verification discipline applies to the new workflow itself (read
 the step list; suspicious speed is a failure signal).
 
+**LANDED** — `verity-foundation` `64aa427`. `.github/workflows/meta.yml` (no path filter, runs on
+every push and PR) + six checks under `.github/checks/`, each written from a captured failure and
+demonstrated **seen-to-fail** at authoring time (documented per-check in `.github/checks/README.md`):
+- **markdown links** resolve (red on a dead link — the audit's `redaction.md` class; 103 files clean),
+- **ADR index coverage** (red on removing ADR 0034's row — the audit's case; 35 ADRs matched),
+- **status lines** on the governed set — every README, named top-level docs, every ADR (red on a
+  stripped line; 58 docs clean),
+- **JSON/YAML parse** (red on a corrupted file; 13 JSON + 15 YAML clean),
+- **shell** — `bash -n` on every tracked `.sh` + ShellCheck (`--severity=info` so the SC2086 quoting
+  class blocks, `--exclude=SC1091`, `records/**` artifacts excluded from ShellCheck) on maintained
+  scripts (red on a syntax error and on an unquoted expansion),
+- **promtool** over `alerts.yaml` (red on a malformed PromQL expr; 8 rules valid).
+EA-1's negative fixtures are deferred with EA-1 (unbuilt). The workflow has no path filter, so its own
+push triggers it — it verifies itself end-to-end in CI.
+
+**Also fixed to make the gates ship green** (completes EA-7's status-line remediation): added
+`**Status:** active` to 11 living/index docs that lacked one (the root and `docs`/`records`/`secrets`
+README indexes + `plan.md`); bolded the plain `Status:` header in ADRs 0031/0032/0033 to the
+`**Status:**` form the other 32 use (the sanctioned merged-ADR edit; value unchanged); reworded a
+`closed-loop/_check-unbound.sh` comment that ShellCheck mis-parsed as a directive.
+
+> **Note — the tools this repo lacked locally were installed to verify seen-to-fail properly**
+> (`shellcheck`, `prometheus`/`promtool` via Homebrew), rather than shipping a gate confirmed only in
+> CI. This directly answers the CI-verification-discipline gate above. (It does **not** fix the
+> separate verity-verifier CI-trigger drop — different repo; still an operator item.)
+
 ## EA-4 — The C1 dependency gate accepts forbidden dependencies [P1]
 
 **Repo / files:** `services/wayfinder/check-navigation-only.py`.
