@@ -1,5 +1,7 @@
 # docs/architecture/
 
+**Status:** active
+
 Detailed architecture. The index is [`../ARCHITECTURE.md`](../ARCHITECTURE.md).
 
 ```

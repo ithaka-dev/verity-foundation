@@ -1,5 +1,7 @@
 # Verity Foundation
 
+**Status:** active
+
 Control center for **Project Verity** — a decentralized, censorship-resistant application
 marketplace for the agentic era, where software is distributed as on-chain licenses and executed
 inside attested confidential VMs.

@@ -1,5 +1,7 @@
 # secrets/
 
+**Status:** active
+
 **Encrypted** secrets, committed on purpose. The keys that open them are not here and cannot be.
 
 Each host decrypts using an age identity derived from its SSH host key

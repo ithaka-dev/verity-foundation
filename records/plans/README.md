@@ -1,5 +1,7 @@
 # records/plans/
 
+**Status:** active
+
 Archived implementation plans, produced by the Research → Plan → Annotate → Implement pipeline
 (the `research-plan-implement` skill).
 

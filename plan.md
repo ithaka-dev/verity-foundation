@@ -1,5 +1,7 @@
 # Plan: Verity implementation — phases, epics, issues
 
+**Status:** active
+
 > **Status as of 2026-08-04.** Phases 0–3 and 5 are implemented and have since been hardened;
 > Phase 4's harnesses are written but only L-04 has run, because the rest need funded keys and TDX
 > capacity an agent is not given (C5). Phase 6 is deferred with `verity-ui`.

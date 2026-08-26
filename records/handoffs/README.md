@@ -1,5 +1,7 @@
 # records/handoffs/
 
+**Status:** active
+
 Session handoffs. What one working session knew when it stopped, written so the next one
 can resume cold — the state, the decisions, the dead ends, and the single next action.
 

@@ -1,6 +1,6 @@
 # 0031 — Purchase idempotency is chain-derived, not stored
 
-Status: active
+**Status:** active
 Date: 2026-08-15
 Issue: MA-2 (2026-08-09 system-design review)
 Repo: `verity-payments`

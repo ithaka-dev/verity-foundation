@@ -1,5 +1,7 @@
 # records/experiments/artifacts/
 
+**Status:** active
+
 Raw evidence for the experiment records one directory up. Attestation responses, compose files, and
 probe scripts, exactly as captured.
 

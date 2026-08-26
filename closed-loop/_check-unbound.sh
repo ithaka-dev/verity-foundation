@@ -20,8 +20,10 @@
 # ## What it is not
 #
 # **`shellcheck` subsumes this entirely and should replace it.** SC2154 is exactly this check, and
-# shellcheck also catches the quoting, subshell and exit-code traps this does not. It is not
-# installed on the machine these are run from, and adding a dependency to a script an operator runs
+# it also catches the quoting, subshell and exit-code traps this does not. (This line once began with
+# the tool's name and ShellCheck parsed it as a `# shellcheck` directive — SC1073 — so it is reworded
+# not to.) It is not always installed on the machine these are run from, and adding a dependency to a
+# script an operator runs
 # by hand is its own cost — so this is the narrow, zero-dependency stopgap for the one defect that
 # has actually bitten. If shellcheck arrives, delete this.
 #

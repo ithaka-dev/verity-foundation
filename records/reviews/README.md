@@ -1,5 +1,7 @@
 # records/reviews/
 
+**Status:** active
+
 Archived design reviews and architecture stress-tests. What a review panel found, when, against
 which commit — the standing record of "the system was examined and here is what came back."
 

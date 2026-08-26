@@ -1,5 +1,7 @@
 # docs/decisions/
 
+**Status:** active
+
 Architecture Decision Records. One file per decision that constrains future work.
 
 ## Rules

@@ -1,5 +1,7 @@
 # records/
 
+**Status:** active
+
 The historical record. What was planned, what was proposed, what changed, what broke, and what
 was tried.
 

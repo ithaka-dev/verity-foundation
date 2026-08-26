@@ -1,5 +1,7 @@
 # docs/
 
+**Status:** active
+
 The **what and why** of Verity. Prose lives here; anything executable lives in
 [`../deployments/`](../deployments/) or a sibling repo, and this tree defers to it.
 

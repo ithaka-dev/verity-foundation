@@ -1,6 +1,6 @@
 # 0032 — Testnet-only is enforced per repo, by different mechanisms
 
-Status: active
+**Status:** active
 Date: 2026-08-16
 Issue: FI-1 and FI-4 (found while implementing the 2026-08-09 system-design review)
 Repo: `verity-payments`, `verity-contracts`; scope statement for all

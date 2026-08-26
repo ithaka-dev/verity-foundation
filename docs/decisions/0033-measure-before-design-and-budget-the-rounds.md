@@ -1,6 +1,6 @@
 # 0033 — Measure before design, and budget the rounds
 
-Status: active
+**Status:** active
 Date: 2026-08-17
 Issue: the 2026-08-17 retrospective on five team cycles
 Repo: none directly — amends the local skills, which [ADR 0025](0025-vendor-engineering-practice-locally.md) makes authoritative across every Verity repo

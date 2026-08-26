@@ -1,0 +1,66 @@
+name: meta
+
+# The control-center gate. Unlike deployments.yml and services.yml, this has NO path
+# filter: it runs on every push and PR, whatever changed. That is the whole point —
+# EA-3 exists because docs/, records/, closed-loop/ and the root docs (the file class a
+# coordination repo is mostly made of) had no CI at all, so "every push is verified" was
+# unenforceable for them and the audit's dead links, missing index rows and statusless
+# docs were invisible. Every check here was written from a captured failure and is green
+# on the tree it shipped with; see .github/checks/ for the per-check rationale.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  meta:
+    name: docs · data · shell
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: install tools (pyyaml, shellcheck, promtool)
+        run: |
+          python -m pip install --quiet pyyaml
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq shellcheck
+          PROM_VERSION=2.53.2
+          curl -fsSL "https://github.com/prometheus/prometheus/releases/download/v${PROM_VERSION}/prometheus-${PROM_VERSION}.linux-amd64.tar.gz" \
+            | tar -xz
+          sudo mv "prometheus-${PROM_VERSION}.linux-amd64/promtool" /usr/local/bin/promtool
+          shellcheck --version | head -2
+          promtool --version
+
+      # Each check is its own step so a failure names itself in the step list, per the
+      # "read the step list, not the badge" rule. `if: always()` on the checks after the
+      # first means one red check does not mask the others — every check runs every time.
+      - name: markdown links resolve
+        if: always()
+        run: python3 .github/checks/check-markdown-links.py
+
+      - name: ADR index coverage
+        if: always()
+        run: python3 .github/checks/check-adr-index.py
+
+      - name: document status lines
+        if: always()
+        run: python3 .github/checks/check-status-lines.py
+
+      - name: JSON/YAML parse
+        if: always()
+        run: python3 .github/checks/check-data-parses.py
+
+      - name: shell (bash -n + shellcheck)
+        if: always()
+        run: bash .github/checks/check-shell.sh
+
+      - name: prometheus alert rules (promtool)
+        if: always()
+        run: promtool check rules observability/alerts.yaml
