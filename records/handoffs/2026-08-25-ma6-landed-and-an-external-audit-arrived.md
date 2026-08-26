@@ -1,7 +1,7 @@
 # Handoff: MA-6 changes 1–2 are landed and CI-verified — and an external audit of that exact commit is sitting untracked
 
 **Date:** 2026-08-25
-**Status:** open
+**Status:** superseded by [`2026-08-26-verifier-audit-cleared-blocked-on-ci-trigger.md`](2026-08-26-verifier-audit-cleared-blocked-on-ci-trigger.md)
 **Author:** Claude (agent), session `23b4d07e` (most-recent-transcript heuristic, not a self-identification)
 **Repo(s):** `verity-verifier` (the work), `verity-foundation` (ADR, alerts, board)
 **Branch:** `main` in all five Verity repos — clean except one untracked file in `verity-verifier`, nothing stashed, nothing unpushed
