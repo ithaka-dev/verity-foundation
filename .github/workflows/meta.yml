@@ -29,8 +29,15 @@ jobs:
       - name: install tools (pyyaml, shellcheck, promtool)
         run: |
           python -m pip install --quiet pyyaml
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq shellcheck
+          # Pin ShellCheck to an exact release rather than `apt install shellcheck`:
+          # the ShellCheck version decides which checks exist, so an apt version that
+          # drifts from what was verified locally makes the gate non-deterministic — it
+          # flagged SC2015 on a valid `A && B || C` guard that 0.11.0 correctly does not.
+          # A fixed binary is reproducible locally and in CI.
+          SC_VERSION=0.11.0
+          curl -fsSL "https://github.com/koalaman/shellcheck/releases/download/v${SC_VERSION}/shellcheck-v${SC_VERSION}.linux.x86_64.tar.xz" \
+            | tar -xJ
+          sudo mv "shellcheck-v${SC_VERSION}/shellcheck" /usr/local/bin/shellcheck
           PROM_VERSION=2.53.2
           curl -fsSL "https://github.com/prometheus/prometheus/releases/download/v${PROM_VERSION}/prometheus-${PROM_VERSION}.linux-amd64.tar.gz" \
             | tar -xz
