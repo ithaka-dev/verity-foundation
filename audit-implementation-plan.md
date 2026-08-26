@@ -1049,7 +1049,7 @@ unbounded; L-01 refuses loudly at any leg it cannot execute instead of printing 
 look like progress; no document claims L-01 is runnable.
 **Gate:** shell — no team; the adapter work is a separate, explicitly scheduled Rust issue.
 
-**LANDED** — `verity-foundation` `e85fb71`. Both scripts rewritten to be honest and exit
+**LANDED** — `verity-foundation` `9d1855b`. Both scripts rewritten to be honest and exit
 non-zero rather than fake progress:
 - **L-01** (`01-full-loop.sh`): stale `e2e-base-sepolia.ts` corrected to `e2e-testnet.ts` (verified
   present); a loud banner states L-01 is **not runnable end to end** and why (the deploy leg needs the
