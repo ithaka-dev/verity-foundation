@@ -1049,6 +1049,31 @@ unbounded; L-01 refuses loudly at any leg it cannot execute instead of printing 
 look like progress; no document claims L-01 is runnable.
 **Gate:** shell — no team; the adapter work is a separate, explicitly scheduled Rust issue.
 
+**LANDED** — `verity-foundation` `e85fb71`. Both scripts rewritten to be honest and exit
+non-zero rather than fake progress:
+- **L-01** (`01-full-loop.sh`): stale `e2e-base-sepolia.ts` corrected to `e2e-testnet.ts` (verified
+  present); a loud banner states L-01 is **not runnable end to end** and why (the deploy leg needs the
+  orchestrator's unbuilt production `ChainReader`/`Platform` adapter). It executes **nothing** — legs
+  1–2 include a real testnet mint, and spending on a licence that can't be deployed/verified/used is
+  waste — lays out the loop leg-by-leg, each labelled `[runs standalone]` or `[BLOCKED]` with the real
+  command, and exits 1. Verified: exit 1, banner present, corrected path present, no leg echoes as
+  progress.
+- **L-05** (`05-publishing-refuses-tags.sh`): the template path now resolves from the **script's own
+  directory** (verified identical from `.`, `closed-loop/`, `/tmp`, `~`); the registry read is
+  **bounded** by a portable `with_timeout` (`timeout`/`gtimeout`, else a background-kill fallback —
+  tested: `sleep 10` killed at 2s), so it can't hang (verified: fails fast, 0s, exit 1 when docker is
+  absent). The header's "no keys" was already right; the README/ARCHITECTURE contradiction was fixed
+  in the docs half.
+
+**Found while doing this — a deeper L-05 blocker, recorded as a follow-up:** L-05's tag-refusal proof
+(steps 2–3) invokes a compose-check **CLI** at `verity-app-template/ts/scripts/check-compose.ts` that
+**does not exist**. `ts/src/compose-check.ts` is a *library* (`pinnedImages`, `assertReferencesDigest`)
+with no CLI wrapper — the audit's L-05 run hung on the registry call at step 1 and never reached this.
+L-05 now **refuses loudly** at that leg (clear "BLOCKED: no compose-check CLI" message, exit 1) instead
+of failing obscurely on a missing file. **Follow-up (verity-app-template TypeScript team, ADR 0026):
+add a thin `check-compose` CLI over the existing library** so L-05's refusal proof can actually run —
+out of EA-2's shell scope. Both scripts pass the new EA-3 meta-CI shell gate (`bash -n` + ShellCheck).
+
 ## EA-3 — Per-commit meta-CI: most of this repo has no workflow at all [P1]
 
 **Repo / files:** `.github/workflows/` (new workflow).
