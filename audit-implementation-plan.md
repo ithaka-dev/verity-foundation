@@ -1365,16 +1365,15 @@ appears. **Open, designed-but-unbuilt.**
   guard each needed (mirroring `compose_{fetch,http}.rs`). `--all-features` still runs all six at full
   count — no coverage lost. This was also the prerequisite that let `--quick` establish a baseline at all.
 
-> **CI caveat (infra, needs operator attention):** the verity-verifier CI workflow **did not trigger**
-> for `529deda` or `44ac9cd` — no run was created despite an active, path-filter-free workflow, while the
-> same day's EA-6 pushes to the four other repos ran normally. A GitHub-side drop specific to this repo.
-> These three commits were therefore **verified locally instead** (fmt/clippy/test/doc green under
-> `--all-features` and per feature leg, by both the developer and a blind reviewer; the full `mutate.sh`
-> re-run scored **31/31 killed, 2 equivalent, exit 0** — confirming follow-up 2's full-run path is
-> unbroken and every gated mutant still applies+dies after `ComposeUrl`/`Fallback` moved code).
-> **`wasm32` is the one leg that cannot be verified locally**
-> (no rustup on this machine) and normally verifies only in CI — it remains unconfirmed for these commits
-> until CI runs again. Re-triggering CI on this repo is an operator/infra task.
+> **CI (resolved — it was latency, not a drop):** the three commits' CI did not appear for ~an hour
+> after pushing (which briefly looked like a per-repo trigger failure), then landed. The `44ac9cd` run
+> (`32988502575`) — the cumulative tree of all three follow-ups — is **green 8/8, including `wasm32
+> target` and `mutation score`**, so the one leg unverifiable locally (no rustup) is now confirmed and
+> the full-suite mutation run is CI-confirmed too. Nothing outstanding. They were also verified locally
+> (fmt/clippy/test/doc under `--all-features` and per feature leg by developer + blind reviewer; the
+> full `mutate.sh` scored 31/31 killed, exit 0). The lesson worth keeping: **GitHub Actions ran with
+> large queue latency around 2026-08-26 — a missing run is not proof of a missing trigger; wait, then
+> read the step list.**
 
 ## Not findings, noted
 
