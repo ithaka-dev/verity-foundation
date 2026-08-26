@@ -1318,18 +1318,37 @@ half already existed via the `Unestablished` mapping. The on-disk-tampering/inva
 *answered* in the design (`team/va-3-mi-5/design.md` §4.3), so it's specified if a real offline need
 appears. **Open, designed-but-unbuilt.**
 
-**Two follow-ups surfaced in VA-3 review, deliberately not built** (`team/va-3-mi-5/design.md` §10):
-- **`ComposeUri::Http(String)` is still publicly constructible** with an arbitrary string, so the
-  enum's "parsed not passed as a string" doc holds for the `Ipfs` arm but not `Http`. Low harm (fetched
-  verbatim, never interpolated; ureq rejects non-http schemes; redirects off) — a validated `Http`
-  newtype is a follow-up, outside VA-3's injection/traversal/redirect scope.
-- **`mutate.sh --quick` silently mis-scores feature-gated mutants** (incl. the new compose one) as
-  SURVIVED, because it drops `--all-features` so the file isn't compiled, and its header claims a skip
-  that doesn't happen. Pre-existing, shared by all connect/TLS mutants — a real gate-integrity gap
-  worth its own issue.
-Also noted in passing: five `attest`/`verify` integration-test files lack a `#[cfg(feature="attest")]`
-guard, so `--no-default-features --features fetch` fails to compile workspace-wide on the untouched
-tree. Pre-existing, unrelated, worth a small follow-up.
+**The three VA-3 follow-ups are now LANDED** (2026-08-26):
+- **`ComposeUri::Http(String)` validated** — `verity-verifier` `44ac9cd`, via a full rust-team cycle
+  (design chose to close the asymmetry over documenting it; LGTM-with-nits; all findings fixed). A
+  `ComposeUrl` newtype (private inner, sole constructor validates the `http(s)://` scheme *only* — the
+  no-SSRF-blocklist policy stays settled) mirrors `Cid`, so an unvalidated Http URL is unconstructable,
+  and `ComposeUri::parse` routes through it (one validity definition). Tests follow `Cid`'s runtime +
+  structural pattern, plus a proptest and a bare `compile_fail` doctest guarding a future `From<String>`
+  (the developer reversed its own position on the doctest — a bare `compile_fail` pins only the boolean
+  compile outcome, so it dodges the toolchain-split `.stderr`-rot that made `trybuild` unwanted). *Phase 6
+  note: the architect's explicit DESIGN-CONFORMS could not be obtained — the agent went unresponsive after
+  the sign-off request; landed on the fresh reviewer's independent confirmation that the code matches the
+  consensus design.* Residual noted: `Cid` lacks the equivalent `compile_fail` guard — a minor future follow-up.
+- **`mutate.sh --quick` mis-scoring fixed** — `verity-verifier` `529deda`. A mutant on a feature-gated
+  file now declares its feature; under `--quick` it is skipped out loud and counted as skipped, not
+  SURVIVED, so score and exit code stay honest (before: 6 gated mutants → false SURVIVED, exit 1; after:
+  skipped, "25/25 killed, 6 skipped", exit 0 — both captured). The full run is unchanged.
+- **Six `attest`/`connect` test files feature-guarded** — `verity-verifier` `647f500`. They drove
+  gated APIs with no guard, breaking `--no-default-features`/`--features fetch` compiles; added the
+  guard each needed (mirroring `compose_{fetch,http}.rs`). `--all-features` still runs all six at full
+  count — no coverage lost. This was also the prerequisite that let `--quick` establish a baseline at all.
+
+> **CI caveat (infra, needs operator attention):** the verity-verifier CI workflow **did not trigger**
+> for `529deda` or `44ac9cd` — no run was created despite an active, path-filter-free workflow, while the
+> same day's EA-6 pushes to the four other repos ran normally. A GitHub-side drop specific to this repo.
+> These three commits were therefore **verified locally instead** (fmt/clippy/test/doc green under
+> `--all-features` and per feature leg, by both the developer and a blind reviewer; the full `mutate.sh`
+> re-run scored **31/31 killed, 2 equivalent, exit 0** — confirming follow-up 2's full-run path is
+> unbroken and every gated mutant still applies+dies after `ComposeUrl`/`Fallback` moved code).
+> **`wasm32` is the one leg that cannot be verified locally**
+> (no rustup on this machine) and normally verifies only in CI — it remains unconfirmed for these commits
+> until CI runs again. Re-triggering CI on this repo is an operator/infra task.
 
 ## Not findings, noted
 
