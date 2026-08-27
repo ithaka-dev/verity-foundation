@@ -6,7 +6,8 @@ recorded under **FI**, plus **PRE-1** found while implementing FI-3, and **MA-12
 Two external audits also arrived, both now archived under
 [`records/audits/`](records/audits/): one of this repo
 ([2026-08-23](records/audits/verity-foundation/2026-08-23-project-audit.md), commit `5a97240`),
-tracked below as **EA-1 through EA-7** (EA-7's documentation drift is corrected, the rest open); and
+tracked below as **EA-1 through EA-7** (EA-1, EA-2, EA-3, EA-6 landed and EA-7's documentation drift
+corrected; EA-4 and EA-5 open); and
 one of `verity-verifier`
 ([2026-08-25](records/audits/verity-verifier/2026-08-25-verifier-audit.md), commit `163e667`),
 tracked as **VA-1 through VA-3** — all three reproduced and confirmed 2026-08-25, and **all three now
@@ -1023,6 +1024,23 @@ the fixture must be seen to **leak on the current config first**, then be blocke
 replacement. The gate is untrusted until both halves are observed.
 **Gate:** no language team (YAML + fixtures); reviewer sign-off per ADR 0018; seen-to-fail
 discipline is the point of the issue.
+
+**LANDED** — `verity-foundation` (sha + green meta-CI run recorded in the landing commit / a follow-up
+per the amend-sha limitation). `collector.yaml` now sets `allow_all_keys: false` with the conventions'
+closed safe-set (plus the five metric-label keys `alerts.yaml` keys on — `check`, `disposition`,
+`outcome`, `refusal`, `tcb_status` — omitting them would silently break F-09/TCB alerting) as
+`allowed_keys`, and adds `redaction` to the metrics pipeline. The enforcement is proven, not asserted:
+`observability/redaction_gate/` runs the **real pinned `otelcol-contrib` v0.124.0** (the version
+`deployments/` resolves through nixpkgs 25.05) against a hostile span/metric/log fixture. Seen-to-fail
+was observed in the required order — the leak was captured on the pre-fix config first (all three
+signals), then blocked by the replacement (transcripts in the gate README) — and the gate bakes in a
+Run B *liveness* leg that defeats redaction every run, so a green Run A can never be vacuous. The gate
+is wired as a meta-CI step (pinned binary, `sha256sum -c`), preceded by a directory-scoped ruff + mypy
+`--strict` step. The redaction processor's *alpha* metrics support was confirmed empirically to redact
+datapoint attributes. The "intent, not fact" caveats in `conventions.md` and `README.md` were removed
+as part of the fix. Reviewer sign-off (ADR 0018): `python-reviewer`, **LGTM-with-nits** — the
+false-PASS class (capture-before-flush; silent skip of malformed exporter lines) was closed by
+restructuring the collector lifecycle to read only post-shutdown, all three nits applied.
 
 ## EA-2 — Honest milestone status: L-01 is unbuilt, L-05 is mischaracterized [P1]
 

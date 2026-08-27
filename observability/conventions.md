@@ -26,11 +26,11 @@ Two consequences worth stating plainly:
   outside the CVM.
 - **Enforcement is collector-side.** Callers are asked to behave; the collector is what makes it
   true. See the `redaction` processor in [`collector.yaml`](collector.yaml) — a convention that only
-  exists in a document is a convention that holds until someone is in a hurry. (The 2026-08-23
-  external audit found that processor is **not currently fail-closed** — `allow_all_keys: true`, and
-  the metrics pipeline omits it entirely. Tracked as EA-1 in
-  [`../audit-implementation-plan.md`](../audit-implementation-plan.md); until it lands, this rule is
-  design intent, not enforced fact.)
+  exists in a document is a convention that holds until someone is in a hurry. The processor is
+  fail-closed: `allow_all_keys: false` with the safe-set below as its `allowed_keys`, redaction on
+  the traces, metrics **and** logs pipelines alike. That this actually drops an unknown attribute is
+  proven against the real collector binary by
+  [`redaction_gate/`](redaction_gate/README.md) (EA-1).
 
 ---
 

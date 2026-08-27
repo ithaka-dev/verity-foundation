@@ -1,9 +1,9 @@
 # observability/
 
 **Status:** active — conventions, collector config, alerts and two dashboards
-([`dashboards/`](dashboards/)) are written. **Known gap:** the collector config does not yet enforce
-the closed attribute set it claims to (2026-08-23 external audit) — see EA-1 in
-[`../audit-implementation-plan.md`](../audit-implementation-plan.md).
+([`dashboards/`](dashboards/)) are written. The collector's fail-closed enforcement of the closed
+attribute set is proven against the real collector binary by
+[`redaction_gate/`](redaction_gate/README.md) (EA-1).
 
 The telemetry contract. Analytics, logging, and tracing work **uniformly across every Verity
 repo**, and this directory is where that uniformity is defined once.
@@ -32,6 +32,9 @@ deployed by modules in [`../deployments/`](../deployments/). Decided in
   verifier* and fires when nothing appears wrong.
 
 - **Dashboards** ([`dashboards/`](dashboards/)) — `lifecycle.json` and `verification.json`.
+- **The redaction gate** ([`redaction_gate/`](redaction_gate/README.md)) — runs the real collector
+  binary against a hostile fixture to prove `collector.yaml` actually drops unknown attributes; the
+  enforcement point for the "closed set" claim, not just its statement.
 - **The instrumentation guide** every sibling repo follows.
 
 ## The rule that matters most
@@ -54,9 +57,9 @@ Therefore:
   `verity.version`, or the `verity.license_fp` fingerprint defined in
   [`conventions.md`](conventions.md), instead.
 - **Redaction belongs in the collector, not in the caller.** Caller-side discipline fails the day
-  someone adds a log line in a hurry. The collector is the enforcement point. (Currently intent,
-  not fact: `collector.yaml` sets `allow_all_keys: true` and its metrics pipeline skips redaction —
-  EA-1, above.)
+  someone adds a log line in a hurry. The collector is the enforcement point, and it is fail-closed:
+  it drops any attribute not on the conventions' closed safe-set, across traces, metrics and logs
+  alike — proven against the real binary by [`redaction_gate/`](redaction_gate/README.md).
 - Treat an emitted secret as a disclosed secret: rotate it, and file an incident in
   [`../records/incidents/`](../records/incidents/).
 

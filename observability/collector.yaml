@@ -42,13 +42,52 @@ processors:
       - pattern: ^(?i).*(private[_-]?key|secret|passphrase|password|mnemonic|api[_-]?key|credential|seed).*$
         action: delete
 
-  # — 2. Redact anything shaped like a key that survived step 1 —
+  # — 2. Drop every attribute that is not on the conventions' closed safe-set —
   #
-  # A backstop, not the mechanism. PEM and JWT shapes are unambiguous; bare 64-hex is deliberately
-  # NOT matched, because a bytes32 is that shape and compose hashes are exactly what this pipeline
-  # exists to correlate on.
+  # This is where "unknown attributes are dropped" is *made* true. `allow_all_keys: false` means the
+  # processor deletes any span/log/metric-datapoint attribute whose key is not in `allowed_keys`
+  # below (it deletes — it does not mask). An accidentally-emitted holder attribute with an innocent
+  # name never reaches an exporter, whatever the callers did. Proven against the real pinned binary
+  # by `redaction_gate/` — reverting `allow_all_keys` to true turns that gate red.
+  #
+  # `allowed_keys` is the closed set from `conventions.md`, plus the metric label keys the alerts in
+  # `alerts.yaml` key on (check/disposition/outcome/refusal/tcb_status) — omitting those would
+  # silently break F-09/TCB alerting, which is a different fail. Adding telemetry means adding its
+  # key here, deliberately, in the same change (conventions.md "Adding an attribute"). Resource
+  # attributes (service.name, verity.component, verity.chain_id) are process-level, not datapoint
+  # attributes, so this processor does not see them — they are governed by the conventions doc, not
+  # here.
+  #
+  # blocked_values stays as a value-shaped backstop for anything on the allow-list that could still
+  # carry a key: PEM and JWT shapes are unambiguous; bare 64-hex is deliberately NOT matched,
+  # because a bytes32 is that shape and compose hashes are exactly what this pipeline correlates on.
   redaction:
-    allow_all_keys: true
+    allow_all_keys: false
+    allowed_keys:
+      # — span/log attributes (conventions.md, "Identifiers that are safe" + "Outcome") —
+      - verity.app_manifest
+      - verity.version
+      - verity.compose_hash
+      - verity.image_digest
+      - verity.app_id
+      - verity.cvm_id
+      - verity.license_fp
+      - verity.outcome
+      - verity.refusal_reason
+      # — verification spans (conventions.md, "Verification spans") —
+      - verity.verify.outcome
+      - verity.verify.refusal
+      - verity.verify.checks
+      - verity.verify.dispositions
+      - verity.verify.mrconfigid_version
+      - verity.verify.tcb_status
+      - verity.verify.advisory_ids
+      # — metric label keys (alerts.yaml keys on these; bare, per the Prometheus label names) —
+      - check
+      - disposition
+      - outcome
+      - refusal
+      - tcb_status
     blocked_values:
       - '-----BEGIN[A-Z ]*PRIVATE KEY-----'
       - '\bey[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.'
@@ -100,7 +139,7 @@ service:
       exporters: [otlphttp/tempo]
     metrics:
       receivers: [otlp]
-      processors: [memory_limiter, attributes/strip-secrets, batch]
+      processors: [memory_limiter, attributes/strip-secrets, redaction, batch]
       exporters: [prometheus]
     logs:
       receivers: [otlp]
