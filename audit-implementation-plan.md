@@ -1025,8 +1025,9 @@ replacement. The gate is untrusted until both halves are observed.
 **Gate:** no language team (YAML + fixtures); reviewer sign-off per ADR 0018; seen-to-fail
 discipline is the point of the issue.
 
-**LANDED** — `verity-foundation` (sha + green meta-CI run recorded in the landing commit / a follow-up
-per the amend-sha limitation). `collector.yaml` now sets `allow_all_keys: false` with the conventions'
+**LANDED** — `verity-foundation` `024e308`, meta-CI run `33092612635` green 12/12 with both new steps
+run: the real-collector gate downloaded the pinned linux binary (`sha256sum -c` OK), ran it twice and
+printed `redaction-gate: PASS`. `collector.yaml` now sets `allow_all_keys: false` with the conventions'
 closed safe-set (plus the five metric-label keys `alerts.yaml` keys on — `check`, `disposition`,
 `outcome`, `refusal`, `tcb_status` — omitting them would silently break F-09/TCB alerting) as
 `allowed_keys`, and adds `redaction` to the metrics pipeline. The enforcement is proven, not asserted:
