@@ -75,12 +75,16 @@ jobs:
       # The redaction gate is a real Python program, so its own type hints are verified rather than
       # left to rot (ADR 0018 sign-off). Pinned, scoped to that directory via its pyproject.toml —
       # the control center is not a Python project, so there is deliberately no repo-wide regime.
+      # mypy discovers config from the CWD, not the target path, so it MUST be pointed at the
+      # directory's pyproject with --config-file: `mypy observability/redaction_gate` from repo root
+      # silently runs in default (non-strict) mode — a green step doing none of the strict work it
+      # claims. (ruff walks up from the target, so it needs no equivalent flag.)
       - name: redaction gate — lint & types (ruff, mypy)
         if: always()
         run: |
           python -m pip install --quiet ruff==0.8.6 mypy==1.14.1 types-PyYAML==6.0.12.20241230
           ruff check observability/redaction_gate
-          mypy observability/redaction_gate
+          mypy --config-file observability/redaction_gate/pyproject.toml observability/redaction_gate
 
       # EA-1: prove collector.yaml is fail-closed by running the REAL collector binary against a
       # hostile fixture — a YAML lint cannot verify what the redaction processor does. Pinned to the
