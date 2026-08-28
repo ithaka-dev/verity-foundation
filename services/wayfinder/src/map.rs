@@ -40,7 +40,9 @@ pub struct Repo {
     pub language: &'static str,
     /// How far along it is.
     pub status: Status,
-    /// The decisions that bind work in it. Read these before touching it.
+    /// The decisions that bind work in this repository specifically. Read these before touching
+    /// it, then read [`PROJECT_WIDE_DECISIONS`] — decisions that bind every repository are not
+    /// repeated here.
     pub binding_decisions: &'static [&'static str],
     /// The trap most likely to be walked into, stated so it is read before the code is written.
     pub trap: Option<&'static str>,
@@ -57,6 +59,25 @@ pub struct Component {
     pub spec_section: &'static str,
 }
 
+/// Decisions that bind work in every repository, not one of them.
+///
+/// These used to sit in `verity-foundation`'s row, which is where they were decided — and which
+/// told an agent working anywhere else that they did not apply. They are appended to every
+/// reading order, after the decisions specific to the repository being asked about.
+///
+/// Only three of these (0017, 0018, 0019) were ever cited on `verity-foundation`'s row; the other
+/// four (0012, 0025, 0026, 0033) are newly recognized as project-wide by this refresh, not
+/// relocations — see `records/experiments/2026-08-28-ea5-c3-gate-seen-to-fail.md`.
+pub const PROJECT_WIDE_DECISIONS: &[&str] = &[
+    "ADR 0012", // which language a repository is written in, and why a rewrite is not a free choice
+    "ADR 0017", // AGPL-3.0-only, every repository, effectively irreversible once contributions arrive
+    "ADR 0018", // reviewer sign-off is a gate, per issue, in every repository
+    "ADR 0019", // OneFlow paused: commit to `main`, findings go in the commit message
+    "ADR 0025", // the local skills are authoritative for how we build, everywhere
+    "ADR 0026", // non-trivial language work goes through that language's team
+    "ADR 0033", // measure before design; the round budget is stated at consensus
+];
+
 /// Every repository in the project.
 ///
 /// Kept in the same order as `CLAUDE.md` §0, so a diff to one is legible against the other.
@@ -66,7 +87,7 @@ pub const REPOS: &[Repo] = &[
         role: "Control centre: spec, architecture, deployments, telemetry, historical record.",
         language: "Nix + Rust + Markdown",
         status: Status::Active,
-        binding_decisions: &["ADR 0001", "ADR 0016", "ADR 0017", "ADR 0018", "ADR 0019"],
+        binding_decisions: &["ADR 0001", "ADR 0013", "ADR 0015"],
         trap: Some("No product code (C1). Services here navigate; they never participate."),
     },
     Repo {
@@ -74,7 +95,7 @@ pub const REPOS: &[Repo] = &[
         role: "Project front door: GitHub Pages, explainers, user-facing documentation.",
         language: "Markdown",
         status: Status::Cloned,
-        binding_decisions: &[],
+        binding_decisions: &["ADR 0002", "ADR 0021"],
         trap: Some("Never describe Verity as trustless (C4). Trust-minimized or verifiable only."),
     },
     Repo {
@@ -83,7 +104,8 @@ pub const REPOS: &[Repo] = &[
         language: "Solidity",
         status: Status::Active,
         binding_decisions: &[
-            "ADR 0004", "ADR 0005", "ADR 0006", "ADR 0011", "ADR 0022", "ADR 0023",
+            "ADR 0002", "ADR 0004", "ADR 0005", "ADR 0006", "ADR 0011", "ADR 0021", "ADR 0022",
+            "ADR 0023", "ADR 0024", "ADR 0029", "ADR 0032", "ADR 0034",
         ],
         trap: Some(
             "A term the holder paid for that is not inside the signature is a term the developer \
@@ -95,10 +117,16 @@ pub const REPOS: &[Repo] = &[
         role: "Resolves the licensed version, deploys to dStack, relays holder-signed signals.",
         language: "Rust",
         status: Status::Active,
-        binding_decisions: &["ADR 0003", "ADR 0008", "ADR 0011"],
+        binding_decisions: &[
+            "ADR 0003", "ADR 0008", "ADR 0011", "ADR 0024", "ADR 0029", "ADR 0030", "ADR 0032",
+            "ADR 0034",
+        ],
         trap: Some(
-            "Resolving the newest AppManifest entry is auto-follow through the back door: it \
-             satisfies every word of I3 and breaks ADR 0003.",
+            "Create-versus-upgrade is a pure function of `instanceOf(licenseId)` (ADR 0029); \
+             keying it on the licence id misses after every upgrade and silently deploys a fresh \
+             CVM with an empty volume and a valid attestation. And resolving the newest \
+             AppManifest entry is auto-follow through the back door — it satisfies every word of \
+             I3 and breaks ADR 0003.",
         ),
     },
     Repo {
@@ -106,7 +134,9 @@ pub const REPOS: &[Repo] = &[
         role: "x402 purchase endpoint. The 402-gated resource IS the mint authorization.",
         language: "TypeScript",
         status: Status::Active,
-        binding_decisions: &["ADR 0002", "ADR 0005", "ADR 0022"],
+        binding_decisions: &[
+            "ADR 0002", "ADR 0005", "ADR 0022", "ADR 0023", "ADR 0031", "ADR 0032",
+        ],
         trap: Some("Designated throwaway (ADR 0002 cond. 3). Discard it; do not extend it."),
     },
     Repo {
@@ -114,7 +144,9 @@ pub const REPOS: &[Repo] = &[
         role: "Agent-side attestation verification. The crown jewel.",
         language: "Rust",
         status: Status::Active,
-        binding_decisions: &["ADR 0007", "ADR 0009", "ADR 0014"],
+        binding_decisions: &[
+            "ADR 0006", "ADR 0007", "ADR 0009", "ADR 0014", "ADR 0027", "ADR 0028", "ADR 0035",
+        ],
         trap: Some(
             "Never loosen a check to resolve a mismatch, and never trust a provider's parsed \
              tcb_info over the raw quote (ADR 0009).",
@@ -125,7 +157,7 @@ pub const REPOS: &[Repo] = &[
         role: "Human surfaces. Scope under discussion.",
         language: "undecided",
         status: Status::Reserved,
-        binding_decisions: &["ADR 0003"],
+        binding_decisions: &["ADR 0002", "ADR 0003", "ADR 0004", "ADR 0005", "ADR 0021"],
         trap: Some(
             "Build no auto-update affordance and no \"keep my tools current\" toggle; both \
              reintroduce what ADR 0003 refuses.",
@@ -136,7 +168,10 @@ pub const REPOS: &[Repo] = &[
         role: "Reference implementation of the app lifecycle contract.",
         language: "TypeScript + Python",
         status: Status::Active,
-        binding_decisions: &["ADR 0005", "ADR 0008", "ADR 0010", "ADR 0023"],
+        binding_decisions: &[
+            "ADR 0003", "ADR 0005", "ADR 0007", "ADR 0008", "ADR 0010", "ADR 0023", "ADR 0029",
+            "ADR 0032",
+        ],
         trap: Some(
             "Unpatchable once copied. Review it harder than internal code, not less (ADR 0005).",
         ),
@@ -144,10 +179,14 @@ pub const REPOS: &[Repo] = &[
     Repo {
         name: "verity-tool-pandoc",
         role: "The MVP's published tool: document conversion wrapping Pandoc.",
-        language: "TypeScript",
+        language: "undecided",
         status: Status::Planned,
-        binding_decisions: &["ADR 0020"],
-        trap: None,
+        binding_decisions: &["ADR 0007", "ADR 0020"],
+        trap: Some(
+            "Every image reference in the published compose must be a digest. A tag keeps \
+             `composeHash` stable while the code inside changes freely — every check passes \
+             while the guarantee is gone (ADR 0007).",
+        ),
     },
 ];
 

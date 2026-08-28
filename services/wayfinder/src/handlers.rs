@@ -18,7 +18,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::map::{owning_repo, repo, Repo, COMPONENTS, REPOS};
+use crate::map::{owning_repo, repo, Repo, COMPONENTS, PROJECT_WIDE_DECISIONS, REPOS};
 
 /// What an agent can ask.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -133,6 +133,10 @@ pub fn answer(question: &Question) -> Result<Answer, HandlerError> {
             })
         }
 
+        // Reading order: the spec, the repo's own CLAUDE.md, decisions specific to this
+        // repository, then decisions that bind everywhere. Repo-specific comes before
+        // project-wide because it is read once per task while the project-wide list is read
+        // once per project.
         Question::ReadFirst { name } => {
             let r = repo(name).ok_or_else(|| HandlerError::UnknownRepo(name.clone()))?;
             let mut documents = vec![
@@ -140,6 +144,7 @@ pub fn answer(question: &Question) -> Result<Answer, HandlerError> {
                 format!("{name}/CLAUDE.md"),
             ];
             documents.extend(r.binding_decisions.iter().map(|d| (*d).to_owned()));
+            documents.extend(PROJECT_WIDE_DECISIONS.iter().map(|d| (*d).to_owned()));
             Ok(Answer::Reading {
                 documents,
                 trap: r.trap.map(std::borrow::ToOwned::to_owned),
