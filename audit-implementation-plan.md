@@ -1157,8 +1157,10 @@ of C1 is not on offer and the gate must not claim it.
 current checker before the fix; the honest scope statement is in the script's own text.
 **Gate:** Python — python-team per ADR 0026; reviewer sign-off.
 
-**LANDED** — `verity-foundation` (sha + green services-CI run recorded in the landing commit / a
-follow-up per the amend-sha limitation), via a full **python-team** cycle per ADR 0026 (architect
+**LANDED** — `verity-foundation` `1b8598f`, services-CI run `33159100133` green: `--self-test`
+printed its full PASS on CI (every table shape offends in its section; the 3 bypasses still bypass
+the frozen legacy parser; path/git refused), and the live gate ran the real manifest. Via a full
+**python-team** cycle per ADR 0026 (architect
 design → developer critique-to-consensus → fresh-eyes reviewer, no design context). The gate now
 parses with stdlib `tomllib`: effective crate = `package`-else-key, and it scans every table shape —
 top-level/dev/build, `target.<cfg>.*`, `workspace.dependencies`, and `[patch.*]`/`[replace]`. All
@@ -1185,7 +1187,8 @@ follow-up. Seen-to-fail evidence:
 > mode since it shipped — mypy discovers config from the CWD, not the target path, so the directory's
 > `strict = true` never applied. A green gate doing none of the strict work it claimed (the gate file
 > happened to be strict-clean, so nothing wrong shipped, but a future regression would have passed).
-> Fixed in `meta.yml` by adding `--config-file`; EA-4 uses the correct form from the start.
+> Fixed in `meta.yml` by adding `--config-file` (`178f708`, meta-CI run `33159100314` green — the
+> step now runs `mypy --config-file …`); EA-4 uses the correct form from the start.
 
 ## EA-5 — Wayfinder's binding-decision map is stale and its C3 test proves nothing [P2]
 
