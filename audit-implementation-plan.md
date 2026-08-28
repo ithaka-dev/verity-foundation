@@ -1,8 +1,9 @@
 # Audit implementation plan — 2026-08-09 system-design review
 
 **Status:** active — CR-1, CR-2, MA-1, MA-2, MA-6 (changes 1–2), MA-7, MA-8, FI-1 through FI-5 and PRE-1 are landed;
-see each issue's commit for the findings and accepted limits. Four issues found while implementing are
-recorded under **FI**, plus **PRE-1** found while implementing FI-3, and **MA-12** was split out of CR-2.
+see each issue's commit for the findings and accepted limits. Five issues found while implementing are
+recorded under **FI** (FI-6, the Cargo.lock resolved-graph scan deferred out of EA-4, is open), plus
+**PRE-1** found while implementing FI-3, and **MA-12** was split out of CR-2.
 Two external audits also arrived, both now archived under
 [`records/audits/`](records/audits/): one of this repo
 ([2026-08-23](records/audits/verity-foundation/2026-08-23-project-audit.md), commit `5a97240`),
@@ -984,7 +985,40 @@ Three things this issue established that outlive it:
 guard yet. It will need the same guard the moment it acquires one, and that is a line in the adapter
 work rather than an issue of its own.
 
----
+## FI-6 — The C1 dependency gate reads declared dependencies, not the resolved graph
+
+**Repo / files:** `services/wayfinder/check-navigation-only.py`, `services/wayfinder/Cargo.lock`,
+`.github/workflows/services.yml` (`no-product-dependencies` and the build job).
+**Found during:** EA-4's review (2026-08-27). Deferred out of EA-4 by team consensus + operator
+sign-off because it changes what the gate *is*; recorded in the handoff and EA-4's LANDED note, and
+promoted here to a numbered issue so it stops living only inside another issue's closing note.
+
+**Problem:** the EA-4 gate parses `Cargo.toml` — the *declared, direct* dependencies. A transitive
+route stays invisible to it: the reviewer demonstrated that a `path` dependency whose own sub-crate
+pulls `reqwest` passes a manifest-only scan while putting a forbidden crate in the build. **Interim
+cover, why this is P3 today:** the gate refuses `path`/`git` dependencies and `[patch]`/`[replace]`
+tables outright, which closes the demonstrated local-crate route entirely — the remaining gap is a
+*registry* crate whose transitive closure pulls a forbidden crate, and wayfinder's committed
+`Cargo.lock` is clean against the forbidden set today. The docstring concedes the gap explicitly
+rather than implying coverage it does not have.
+
+**Change:** scan the committed `Cargo.lock` (TOML, stdlib-parseable) for the forbidden set across
+the full resolved graph, in addition to the manifest scan — not replacing it: the manifest scan
+gives the *policy* refusals (`path`/`git`/patch/replace) that a lock scan cannot express. Two parts
+the deferral named as design work:
+
+- **Offender messages must carry the chain**, not just the leaf — "`reqwest` resolves via
+  `some-crate` → `reqwest`" — or the report is undebuggable; `cargo tree -i` shape, derived from the
+  lock's `dependencies` arrays.
+- **A lock-freshness guarantee**, or the gate scans a stale lock and certifies nothing: CI must fail
+  if `Cargo.lock` does not match `Cargo.toml` (`cargo build --locked` or `cargo metadata --locked`
+  in the same job or a job the gate depends on). This couples the gate to a build job — today the
+  two are independent, which is why it was not folded into EA-4.
+
+**Acceptance criteria:** a fixture lock containing a forbidden crate transitively (not in the
+manifest) is refused with the chain named, **seen to fail first** against the pre-fix gate; the
+real `Cargo.lock` passes; a deliberately stale lock (manifest edited, lock not) fails CI.
+**Gate:** Python — python-team per ADR 0026 (design choices above are real); reviewer sign-off.
 
 # External audit findings — 2026-08-23 project audit, not from the 2026-08-09 review
 

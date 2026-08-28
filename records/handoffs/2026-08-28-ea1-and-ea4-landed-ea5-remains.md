@@ -1,7 +1,7 @@
 # Handoff: EA-1 (fail-closed telemetry) and EA-4 (TOML dependency gate) landed and CI-green — EA-5 and a Cargo.lock follow-up remain
 
 **Date:** 2026-08-28
-**Status:** open
+**Status:** picked up 2026-08-28
 **Author:** Claude (agent), session URL `session_01PrPvKWxtTvytvJJN6od1jH` (session-id heuristic: the newest-transcript lookup did not resolve this run; the URL is the one stamped in this session's commits)
 **Repo(s):** `verity-foundation` (all of it — board, gates, CI, records)
 **Branch:** `main`, **clean and in sync** — nothing uncommitted except the two handoff files this warp touches, nothing stashed, nothing unpushed
