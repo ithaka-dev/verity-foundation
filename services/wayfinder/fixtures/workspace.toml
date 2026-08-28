@@ -1,0 +1,14 @@
+# EA-4 negative fixture — audit bypass #2 (2026-08-23): workspace-inherited dependency.
+#
+# The pre-EA-4 parser reads the whole `reqwest.workspace` as the dependency name — it never equals
+# `reqwest`, so this fixture exits 0 (BYPASS) on the old checker. `check-navigation-only.py`'s
+# tomllib parser sees the declaring key `reqwest` directly (tomllib normalizes the dotted key to
+# `{"reqwest": {"workspace": true}}`) and catches it.
+[package]
+name = "audit-fixture-workspace"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+reqwest.workspace = true
+serde = "1"

@@ -1,0 +1,16 @@
+# EA-4 fixture (2026-08-27 review, F1 — CONFIRMED BYPASS): `sub = { path = "sub" }` reported
+# `ok: 1 dependencies... (sub)` — a path dependency whose own manifest could declare reqwest (or
+# anything else) is invisible to name matching entirely, since "sub" itself matches no FORBIDDEN
+# pattern. Same shape, same blindness, for `git`. Neither `local_sub` nor `evil_git` matches
+# FORBIDDEN by name — this fixture is caught ONLY by the unconditional path/git refusal, isolating
+# that check from ordinary FORBIDDEN-name matching (see patch_table.toml for the same mechanism
+# reached through [patch.*] instead of [dependencies]).
+[package]
+name = "audit-fixture-unverifiable"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+serde = "1"
+local_sub = { path = "sub" }
+evil_git = { git = "https://example.com/evil.git" }

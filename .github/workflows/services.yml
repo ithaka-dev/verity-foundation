@@ -74,5 +74,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5          # EA-3 determinism: pin the interpreter,
+        with:                                   # do not inherit ubuntu-latest's default python3
+          python-version: '3.12'
+      - name: gate — lint & types (ruff, mypy)  # ADR 0018 sign-off, same pins as meta.yml/EA-1
+        run: |
+          python -m pip install --quiet ruff==0.8.6 mypy==1.14.1
+          # Both .py in the directory: the gate (hyphenated, run as a script) and the frozen
+          # _legacy_parser.py the self-test imports. ruff walks up from each target to the
+          # pyproject; mypy discovers config from the CWD, so it MUST be pointed at the
+          # directory's pyproject with --config-file or it silently runs non-strict (verified —
+          # the same trap already found and fixed in meta.yml's EA-1 step).
+          ruff check services/wayfinder/check-navigation-only.py services/wayfinder/_legacy_parser.py
+          mypy --config-file services/wayfinder/pyproject.toml \
+            services/wayfinder/check-navigation-only.py services/wayfinder/_legacy_parser.py
       - name: no chain, crypto or attestation dependencies
         run: python3 services/wayfinder/check-navigation-only.py
+      - name: dependency-gate self-test (the three audit bypasses stay refused)
+        run: python3 services/wayfinder/check-navigation-only.py --self-test

@@ -6,8 +6,8 @@ recorded under **FI**, plus **PRE-1** found while implementing FI-3, and **MA-12
 Two external audits also arrived, both now archived under
 [`records/audits/`](records/audits/): one of this repo
 ([2026-08-23](records/audits/verity-foundation/2026-08-23-project-audit.md), commit `5a97240`),
-tracked below as **EA-1 through EA-7** (EA-1, EA-2, EA-3, EA-6 landed and EA-7's documentation drift
-corrected; EA-4 and EA-5 open); and
+tracked below as **EA-1 through EA-7** (EA-1, EA-2, EA-3, EA-4, EA-6 landed and EA-7's documentation
+drift corrected; EA-5 open); and
 one of `verity-verifier`
 ([2026-08-25](records/audits/verity-verifier/2026-08-25-verifier-audit.md), commit `163e667`),
 tracked as **VA-1 through VA-3** — all three reproduced and confirmed 2026-08-25, and **all three now
@@ -1156,6 +1156,36 @@ of C1 is not on offer and the gate must not claim it.
 **Acceptance criteria:** all three bypass forms are refused, each fixture seen to pass (bypass) the
 current checker before the fix; the honest scope statement is in the script's own text.
 **Gate:** Python — python-team per ADR 0026; reviewer sign-off.
+
+**LANDED** — `verity-foundation` (sha + green services-CI run recorded in the landing commit / a
+follow-up per the amend-sha limitation), via a full **python-team** cycle per ADR 0026 (architect
+design → developer critique-to-consensus → fresh-eyes reviewer, no design context). The gate now
+parses with stdlib `tomllib`: effective crate = `package`-else-key, and it scans every table shape —
+top-level/dev/build, `target.<cfg>.*`, `workspace.dependencies`, and `[patch.*]`/`[replace]`. All
+three audit bypasses (rename, `.workspace = true`, subtable) are refused. Beyond the board spec, the
+review surfaced and closed a fourth class: `path`/`git` dependencies are refused outright (a
+sub-crate `path` dep pulling `reqwest` was a demonstrated bypass the old docstring's claim denied).
+The seen-to-fail discipline is executable, not a transcript: a **frozen copy of the pre-EA-4 regex
+parser** (`_legacy_parser.py`, imported only by `--self-test`) is asserted bidirectionally each run —
+the new parser catches each fixture AND the old one still misses it — and the reviewer confirmed via
+**six independent mutations** that every table branch is witnessed failing (gutting any branch turns
+`--self-test` red on exactly the fixture guarding it). Exit model 0/1/2 (operational failures no
+longer read as violations); directory-scoped `services/wayfinder/pyproject.toml` (ruff + mypy strict,
+EA-1 pins), wired into `services.yml` with `setup-python` 3.12 and — critically — `mypy --config-file`
+(see the EA-1 note below). Docstring narrowed to a **dependency-policy gate**: it does not prove C1
+(std `net`/`Command` need no crate) and now explicitly concedes the transitive-crates.io and
+cross-file workspace-root gaps. **Deferred, by team consensus and user sign-off:** a fuller
+`Cargo.lock` full-resolved-graph scan (would catch transitive trust-path crates) — it changes what the
+gate *is* (declared-direct → resolved-graph) and needs a lock-freshness guarantee, so it is its own
+follow-up. Seen-to-fail evidence:
+[`records/experiments/2026-08-27-ea4-dependency-gate-bypass-transcript.md`](records/experiments/2026-08-27-ea4-dependency-gate-bypass-transcript.md).
+
+> **Latent EA-1 defect caught during EA-4** (credit ea4-developer). EA-1's meta-CI mypy step
+> (`mypy observability/redaction_gate`, no `--config-file`) had been running in **default, non-strict**
+> mode since it shipped — mypy discovers config from the CWD, not the target path, so the directory's
+> `strict = true` never applied. A green gate doing none of the strict work it claimed (the gate file
+> happened to be strict-clean, so nothing wrong shipped, but a future regression would have passed).
+> Fixed in `meta.yml` by adding `--config-file`; EA-4 uses the correct form from the start.
 
 ## EA-5 — Wayfinder's binding-decision map is stale and its C3 test proves nothing [P2]
 

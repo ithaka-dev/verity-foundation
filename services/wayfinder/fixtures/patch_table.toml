@@ -1,0 +1,16 @@
+# EA-4 fixture (2026-08-27 review, F5): a [patch.crates-io] entry substitutes reqwest's SOURCE
+# without touching [dependencies] at all — a source-substitution vector distinct from, and
+# unaddressed by, ordinary dependency-table scanning. Proves dependency_tables' patch.* branch is
+# live. Also a path dependency, so it doubles as evidence the unverifiable check reaches into
+# [patch.*] too (not separately asserted by name here — see unverifiable.toml for that in
+# isolation).
+[package]
+name = "audit-fixture-patch-table"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+serde = "1"
+
+[patch.crates-io]
+reqwest = { path = "../vendor/reqwest" }

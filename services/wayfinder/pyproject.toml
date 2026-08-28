@@ -1,0 +1,19 @@
+# Tooling config scoped to the C1 dependency gate. The control center is not a Python project; this
+# file makes the gate's own type hints verified rather than decorative, per ADR 0018 sign-off.
+# services.yml runs both, pinned, before the gate. tomllib is stdlib (no third-party stubs needed).
+#
+# mypy discovers its config from the CURRENT WORKING DIRECTORY, not from the target file's path — a
+# `mypy services/wayfinder/*.py` run from the repo root silently ignores this file and runs
+# non-strict unless pointed at it explicitly. services.yml passes `--config-file
+# services/wayfinder/pyproject.toml` for exactly this reason (verified against the identical trap
+# already found — and fixed — in observability/redaction_gate's meta.yml step).
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "PL", "EXE"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true

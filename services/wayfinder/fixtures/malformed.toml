@@ -1,0 +1,4 @@
+# EA-4 operational fixture — deliberately invalid TOML (unterminated table header), asserting the
+# gate's exit-2 path (tomllib.TOMLDecodeError) rather than mistaking a broken manifest for a pass.
+[package
+name = "audit-fixture-malformed"

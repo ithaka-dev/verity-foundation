@@ -1,0 +1,17 @@
+# EA-4 negative fixture — audit bypass #3 (2026-08-23): a `[dependencies.<name>]` subtable.
+#
+# The pre-EA-4 parser only recognises `[dependencies]` (or a header containing "dependencies") as
+# opening a dependency section; inside `[dependencies.reqwest]` it reads the next line's key
+# (`version`) as the dependency name, never `reqwest` — so this fixture exits 0 (BYPASS) on the old
+# checker. `check-navigation-only.py`'s tomllib parser sees `{"reqwest": {"version": "0.12"}}` and
+# catches the declaring key `reqwest` directly.
+[package]
+name = "audit-fixture-subtable"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies.reqwest]
+version = "0.12"
+
+[dependencies]
+serde = "1"

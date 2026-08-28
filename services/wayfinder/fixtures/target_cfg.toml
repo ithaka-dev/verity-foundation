@@ -1,0 +1,13 @@
+# EA-4 shape-completeness fixture (2026-08-27 review, F2): reqwest declared under a
+# target-cfg-scoped dependency table. Proves dependency_tables' `target.<cfg>.*` branch
+# (check-navigation-only.py, dependency_tables) is live, not merely claimed in the docstring.
+[package]
+name = "audit-fixture-target-cfg"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+serde = "1"
+
+[target."cfg(unix)".dependencies]
+reqwest = "0.12"

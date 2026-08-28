@@ -1,0 +1,13 @@
+# EA-4 shape-completeness fixture (2026-08-27 review, F2): reqwest declared under
+# [build-dependencies]. Same rationale as dev_dependencies.toml — proves this specific branch of
+# dependency_tables' DEP_SECTIONS loop is live.
+[package]
+name = "audit-fixture-build-dependencies"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+serde = "1"
+
+[build-dependencies]
+reqwest = "0.12"

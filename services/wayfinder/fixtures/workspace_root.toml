@@ -1,0 +1,11 @@
+# EA-4 shape-completeness fixture (2026-08-27 review, F2): reqwest declared under
+# [workspace.dependencies] in a workspace-root-shaped manifest (no [package] table — workspace
+# roots need not have one). Distinct from workspace.toml, which is a MEMBER manifest using
+# `reqwest.workspace = true` inside its own ordinary [dependencies] table; that shape never
+# exercises this branch of dependency_tables at all. This fixture is what does.
+[workspace]
+members = ["member"]
+
+[workspace.dependencies]
+reqwest = "0.12"
+serde = "1"

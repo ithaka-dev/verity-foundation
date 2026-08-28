@@ -1,0 +1,14 @@
+# EA-4 negative fixture — audit bypass #1 (2026-08-23): a renamed dependency.
+#
+# The pre-EA-4 line-oriented parser reads the text left of `=` and sees `transport`, never the
+# `package = "reqwest"` inside the table — so this fixture exits 0 (BYPASS) on the old checker.
+# `check-navigation-only.py`'s tomllib parser resolves the effective name via package-else-key and
+# catches `reqwest`.
+[package]
+name = "audit-fixture-rename"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+transport = { package = "reqwest", version = "0.12" }
+serde = "1"

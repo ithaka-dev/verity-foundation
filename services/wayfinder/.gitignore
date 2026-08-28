@@ -1,1 +1,8 @@
 target/
+
+# Python (check-navigation-only.py, _legacy_parser.py, self-test). ruff/mypy self-ignore their own
+# cache dirs via an auto-written .gitignore; __pycache__ does not, and --self-test's lazy import of
+# _legacy_parser creates one on every local run (2026-08-27 review, n3).
+__pycache__/
+.mypy_cache/
+.ruff_cache/
