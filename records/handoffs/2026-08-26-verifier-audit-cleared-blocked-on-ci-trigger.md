@@ -1,7 +1,7 @@
 # Handoff: the external verifier audit is fully remediated — the only thing open is that verity-verifier CI stopped triggering
 
 **Date:** 2026-08-26
-**Status:** open
+**Status:** superseded by [`2026-08-26-audit-backlog-ea1-ea4-ea5-remain.md`](2026-08-26-audit-backlog-ea1-ea4-ea5-remain.md)
 **Author:** Claude (agent), session `verity-foundation-4f` / URL `session_01PrPvKWxtTvytvJJN6od1jH` (heuristic identifiers, not a self-identification)
 **Repo(s):** `verity-verifier` (all the code), `verity-foundation` (the audit board, the archive, this handoff)
 **Branch:** `main` in both, in sync with upstream — see Runtime state for the one transient/one uncommitted exception
