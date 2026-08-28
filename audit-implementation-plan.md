@@ -7,8 +7,8 @@ recorded under **FI** (FI-6, the Cargo.lock resolved-graph scan deferred out of 
 Two external audits also arrived, both now archived under
 [`records/audits/`](records/audits/): one of this repo
 ([2026-08-23](records/audits/verity-foundation/2026-08-23-project-audit.md), commit `5a97240`),
-tracked below as **EA-1 through EA-7** (EA-1, EA-2, EA-3, EA-4, EA-6 landed and EA-7's documentation
-drift corrected; EA-5 open); and
+tracked below as **EA-1 through EA-7** (EA-1 through EA-6 all landed and EA-7's documentation
+drift corrected — the external audit's backlog is closed); and
 one of `verity-verifier`
 ([2026-08-25](records/audits/verity-verifier/2026-08-25-verifier-audit.md), commit `163e667`),
 tracked as **VA-1 through VA-3** — all three reproduced and confirmed 2026-08-25, and **all three now
@@ -1240,6 +1240,22 @@ name presence.
 to fail when a row is deliberately drifted, then passes.
 **Gate:** Rust — rust-team per ADR 0026 (what binds each repo is being *chosen*, not transcribed);
 reviewer sign-off.
+
+**LANDED** — `716970b`, services CI run `33163782600` + meta run `33163782615`, both read at the
+step level (26/26 in the test job **and** under the coverage job; floors enforced). Full rust-team
+cycle: design of record with the complete decision log archived at
+[`records/plans/2026-08-28-ea5-binding-map.md`](records/plans/2026-08-28-ea5-binding-map.md);
+seen-to-fail evidence (8 drifts + fix-round falsifications) at
+[`records/experiments/2026-08-28-ea5-c3-gate-seen-to-fail.md`](records/experiments/2026-08-28-ea5-c3-gate-seen-to-fail.md).
+Beyond the board's ask, the cycle produced: `PROJECT_WIDE_DECISIONS` (seven process ADRs bind every
+repo — previously three of them sat on `verity-foundation`'s row alone and four were cited
+nowhere); a live-ADR coverage test (every non-superseded ADR must be cited somewhere — the test
+that would have caught EA-5 itself nineteen ADRs ago); amended-pair co-citation (0027⇒0028)
+enforced from the ADRs' own status blocks; and the CP-1 correction to `CLAUDE.md` §0's
+orchestrator row (`a5e40ea` — it still said "watches license state", the wording ADR 0030
+abolished). Deliberately out of scope, flagged during the cycle: CP-3 (ADRs 0008/0023 don't record
+"amended by" in their status lines the way 0027 does — a docs-convention inconsistency, not an
+EA-5 defect).
 
 ## EA-6 — ADR 0017 is not represented by repository licence files [P2]
 
