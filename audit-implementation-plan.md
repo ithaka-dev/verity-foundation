@@ -1,9 +1,9 @@
 # Audit implementation plan — 2026-08-09 system-design review
 
-**Status:** active — CR-1, CR-2, MA-1, MA-2, MA-6 (changes 1–2), MA-7, MA-8, FI-1 through FI-5 and PRE-1 are landed;
-see each issue's commit for the findings and accepted limits. Five issues found while implementing are
-recorded under **FI** (FI-6, the Cargo.lock resolved-graph scan deferred out of EA-4, is open), plus
-**PRE-1** found while implementing FI-3, and **MA-12** was split out of CR-2.
+**Status:** active — CR-1, CR-2, MA-1, MA-2, MA-6 (changes 1–2), MA-7, MA-8, FI-1 through FI-6 and PRE-1 are landed;
+see each issue's commit for the findings and accepted limits. Six issues found while implementing are
+recorded under **FI** (all landed — FI-6, the Cargo.lock resolved-graph scan deferred out of EA-4,
+landed 2026-08-29), plus **PRE-1** found while implementing FI-3, and **MA-12** was split out of CR-2.
 Two external audits also arrived, both now archived under
 [`records/audits/`](records/audits/): one of this repo
 ([2026-08-23](records/audits/verity-foundation/2026-08-23-project-audit.md), commit `5a97240`),
@@ -1019,6 +1019,26 @@ the deferral named as design work:
 manifest) is refused with the chain named, **seen to fail first** against the pre-fix gate; the
 real `Cargo.lock` passes; a deliberately stale lock (manifest edited, lock not) fails CI.
 **Gate:** Python — python-team per ADR 0026 (design choices above are real); reviewer sign-off.
+
+**LANDED** — `5e8a573`, services CI run `33257489110` + meta run `33257489097`, read at the step
+level: the freshness step ran the real `cargo metadata --locked`, the gate printed its
+"13 locked packages" verdict, the self-test printed its full PASS line including the lock phase,
+and the wayfinder job's clippy/test now carry `--locked`. Full python-team cycle: design of record
++ complete decision log at
+[`records/plans/2026-08-29-fi6-lock-scan.md`](records/plans/2026-08-29-fi6-lock-scan.md);
+seen-to-fail evidence (acceptance criteria including the pre-fix bypass, mutations A–C, the
+five-row freshness measurement table, review-round mutations M1–M7) at
+[`records/experiments/2026-08-29-fi6-lock-scan-transcript.md`](records/experiments/2026-08-29-fi6-lock-scan-transcript.md).
+Both design obligations delivered: offender chains ("`reqwest 0.12.9` via root → wrapper →
+`reqwest`", one deterministic BFS witness per offender, membership-not-edges so a dangling edge
+cannot invent one) and lock freshness in CI (same job as the scan, before it — measured: stale
+lock exits 101; **`--no-deps` completely neuters the check**, now warned against in the YAML; a
+cold-cache network outage shows the same exit code, disambiguated only by error text). Worth
+carrying forward: three separate times this cycle, a design proposed code its own pinned lint
+config rejects (EA-4's UP036, this issue's PLR2004 and PLR0912/0915) — run the config against the
+sketch before consensus; and two review-round fixtures were themselves caught misfiring by running
+their mutations (a harness that crashed instead of reporting, a fixture backstopped by an adjacent
+guard) — the seen-to-fail discipline applies to the checks' checks.
 
 # External audit findings — 2026-08-23 project audit, not from the 2026-08-09 review
 
