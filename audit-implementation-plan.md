@@ -1147,6 +1147,14 @@ of failing obscurely on a missing file. **Follow-up (verity-app-template TypeScr
 add a thin `check-compose` CLI over the existing library** so L-05's refusal proof can actually run —
 out of EA-2's shell scope. Both scripts pass the new EA-3 meta-CI shell gate (`bash -n` + ShellCheck).
 
+> **Follow-up DONE** — 2026-08-29, `verity-app-template` `3a83cbf` (+ `64fbc79`, a flaky seal test the
+> review caught live), full typescript-team cycle; design of record
+> [`records/plans/2026-08-29-check-compose-cli.md`](records/plans/2026-08-29-check-compose-cli.md).
+> L-05's steps 2–3 verified byte-for-byte against the real CLI (tagged → exit 1, pinned → exit 0) and
+> L-05 runs end-to-end with a stubbed registry resolution; **the live registry read (step 1, needs
+> docker + network) is the one leg still never run for real.** Scope call recorded: publisher-side
+> tooling is TS-only under ADR 0018's divergence rationale — no Python mirror.
+
 ## EA-3 — Per-commit meta-CI: most of this repo has no workflow at all [P1]
 
 **Repo / files:** `.github/workflows/` (new workflow).
