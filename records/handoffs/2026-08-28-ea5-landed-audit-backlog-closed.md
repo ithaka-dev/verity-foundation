@@ -1,7 +1,7 @@
 # Handoff: EA-5 landed and CI-green — the 2026-08-23 external audit's backlog is closed; FI-6 is the open follow-up
 
 **Date:** 2026-08-28
-**Status:** open
+**Status:** superseded by [`2026-08-29-fi6-landed-fi-backlog-closed.md`](2026-08-29-fi6-landed-fi-backlog-closed.md)
 **Author:** Claude (agent), session URL `session_01BpZeUkzKSxGDhXs6JBbyJ3` (newest-transcript
 heuristic resolves this run: `713f667b-3144-4c3d-b4c7-e2ef832193e0.jsonl`)
 **Repo(s):** `verity-foundation` only
