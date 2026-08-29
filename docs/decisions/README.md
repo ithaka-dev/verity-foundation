@@ -59,6 +59,7 @@ must be updated to point at it. Silence is how decisions get relitigated by acci
 | [0033](0033-measure-before-design-and-budget-the-rounds.md) | Measure before design, and budget the rounds | accepted |
 | [0034](0034-instance-binding-hardening-deferred-to-the-mainnet-gate.md) | Instance-binding hardening is deferred to the mainnet gate | accepted |
 | [0035](0035-indeterminate-outcome-and-per-check-disposition.md) | `Indeterminate` outcome and per-check disposition | accepted |
+| [0036](0036-compose-custody-and-platform-identity-conventions.md) | Compose custody and platform-identity conventions for deployment | proposed |
 
 Add a row when you add an ADR.
 
