@@ -1,0 +1,16 @@
+# FI-6 fixture — the minimal chain: root depends on the forbidden crate directly. Asserts the
+# message format at its shortest (two-element chain), contrasting with transitive.lock's longer one.
+version = 4
+
+[[package]]
+name = "audit-fixture-direct"
+version = "0.0.0"
+dependencies = [
+ "reqwest",
+]
+
+[[package]]
+name = "reqwest"
+version = "0.12.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0000000000000000000000000000000000000000000000000000000000000020"

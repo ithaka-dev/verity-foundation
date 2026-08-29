@@ -1,0 +1,9 @@
+# FI-6 operational fixture (review nit) — `version = true`. `bool` is a subclass of `int` in
+# Python, so `isinstance(version, int)` alone accepts it and `1 <= True <= 4` is `True` (since
+# `True == 1`) — a boolean lock-version key would silently be treated as v1. Exercises
+# `_lock_format_version`'s explicit `isinstance(version, bool)` exclusion.
+version = true
+
+[[package]]
+name = "audit-fixture-bool-version"
+version = "0.0.0"

@@ -1,0 +1,8 @@
+# FI-6 operational fixture (review S2) — a `dependencies` array containing a non-string element
+# (an integer). Exercises `locked_packages`'s per-entry dependency-name guard.
+version = 4
+
+[[package]]
+name = "audit-fixture-bad-dep-entry"
+version = "0.0.0"
+dependencies = [123]

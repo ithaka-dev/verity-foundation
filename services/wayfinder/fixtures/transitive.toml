@@ -1,0 +1,14 @@
+# FI-6 headline fixture — innocent by name. Declares only `some-wrapper` (plus the usual `serde`
+# baseline, matching the existing fixture convention) — a registry crate whose OWN dependencies pull
+# `reqwest` (see the paired fixtures/locks/transitive.lock). The manifest scan finds nothing wrong
+# here: this fixture is the standing regression witness that the manifest phase alone cannot see
+# this route (§6.3(b) — no new frozen module needed, unlike EA-4's _legacy_parser.py, because the
+# manifest phase itself is the "old approach" being re-executed on every run).
+[package]
+name = "audit-fixture-transitive"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+serde = "1"
+some-wrapper = "0.3"

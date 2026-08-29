@@ -1,0 +1,30 @@
+# FI-6 fixture (developer AMEND-9a) — the root's own `dependencies` array names "reqwest", but no
+# `[[package]] name = "reqwest"` entry exists anywhere in this lock: a dangling edge. Offenders come
+# from the PACKAGE LIST, never from an edge (§1), so this dangling "reqwest" must produce NO
+# offender — an edge-derived scan would invent a versionless one and fail the exactly-one check in
+# LOCK_FIXTURE_CASES. The real offender is `sha2`, reached through `some-wrapper`, proving BFS
+# survives the dead end rather than getting confused by it.
+version = 4
+
+[[package]]
+name = "audit-fixture-phantom"
+version = "0.0.0"
+dependencies = [
+ "reqwest",
+ "some-wrapper",
+]
+
+[[package]]
+name = "some-wrapper"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0000000000000000000000000000000000000000000000000000000000000040"
+dependencies = [
+ "sha2",
+]
+
+[[package]]
+name = "sha2"
+version = "0.10.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0000000000000000000000000000000000000000000000000000000000000041"

@@ -1,0 +1,24 @@
+# FI-6 fixture — reqwest is IN the lock but nothing depends on it (no edge points to it anywhere).
+# Asserts that membership, not reachability, decides the verdict (§1): an unreachable offender is
+# reported with an empty chain, not silently dropped — the class of bug a reachability-gated scan
+# would produce.
+version = 4
+
+[[package]]
+name = "audit-fixture-unreachable"
+version = "0.0.0"
+dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "serde"
+version = "1.0.229"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0000000000000000000000000000000000000000000000000000000000000030"
+
+[[package]]
+name = "reqwest"
+version = "0.12.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0000000000000000000000000000000000000000000000000000000000000031"

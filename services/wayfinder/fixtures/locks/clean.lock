@@ -1,0 +1,30 @@
+# FI-6 positive fixture — mirrors fixtures/clean.toml's dependency set (paired manifest, package
+# name "audit-fixture-clean"). Must pass: no name here is anywhere close to FORBIDDEN.
+version = 4
+
+[[package]]
+name = "audit-fixture-clean"
+version = "0.0.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
+name = "serde"
+version = "1.0.229"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0000000000000000000000000000000000000000000000000000000000000060"
+
+[[package]]
+name = "serde_json"
+version = "1.0.151"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0000000000000000000000000000000000000000000000000000000000000061"
+
+[[package]]
+name = "thiserror"
+version = "2.0.19"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0000000000000000000000000000000000000000000000000000000000000062"

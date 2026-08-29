@@ -1,0 +1,7 @@
+# FI-6 operational fixture — an unmeasured lock format version. Fail-closed rather than guessed at
+# (§1.5): a version outside LOCK_VERSION_MIN..LOCK_VERSION_MAX raises LockStructureError -> exit 2.
+version = 99
+
+[[package]]
+name = "audit-fixture-unknown-version"
+version = "0.0.0"

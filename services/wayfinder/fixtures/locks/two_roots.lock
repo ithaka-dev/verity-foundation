@@ -1,0 +1,24 @@
+# FI-6 fixture (developer AMEND-9b) — TWO source-less packages, so root rule 2 (unique source-less
+# entry) is ambiguous and root rule 1 (manifest-name match) is the only way to resolve this lock.
+# Asserted two-sidedly in self_test: WITH root_name="audit-fixture-two-roots" this resolves and
+# yields the chain; WITHOUT it, evaluate_lock() must raise LockStructureError. Neither half alone
+# distinguishes rule 1 from rule 2 — every other fixture has exactly one source-less package, so
+# without this one, rule 1 is dead code under test.
+version = 4
+
+[[package]]
+name = "audit-fixture-two-roots"
+version = "0.0.0"
+dependencies = [
+ "reqwest",
+]
+
+[[package]]
+name = "other-member"
+version = "0.0.0"
+
+[[package]]
+name = "reqwest"
+version = "0.12.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0000000000000000000000000000000000000000000000000000000000000050"

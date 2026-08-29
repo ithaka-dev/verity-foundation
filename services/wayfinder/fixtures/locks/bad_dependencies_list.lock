@@ -1,0 +1,8 @@
+# FI-6 operational fixture (review S2) — a `[[package]]` entry whose `dependencies` is present but
+# not a list. Exercises `locked_packages`'s dependencies-shape guard.
+version = 4
+
+[[package]]
+name = "audit-fixture-bad-deps-list"
+version = "0.0.0"
+dependencies = "not-a-list"

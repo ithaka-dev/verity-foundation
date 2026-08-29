@@ -1,0 +1,16 @@
+# FI-6 operational fixture (review S2) — a non-root `[[package]]` entry with a non-string
+# `source`. Deliberately two packages, not one: a single-package version would leave the bad
+# package as the sole source-less candidate, so root identification would fail on its own
+# ambiguity and mask this specific guard (a fixture that isolates nothing but claims to). Here
+# `audit-fixture-bad-source` is unambiguously root (the only source-less entry) and `reqwest`
+# carries the malformed `source`, so only this guard stands between it and being processed.
+version = 4
+
+[[package]]
+name = "audit-fixture-bad-source"
+version = "0.0.0"
+
+[[package]]
+name = "reqwest"
+version = "0.12.9"
+source = 123

@@ -1,0 +1,27 @@
+# FI-6 fixture — THE HEADLINE CASE. Hand-crafted, not real cargo output: root -> some-wrapper (an
+# innocently-named registry crate) -> reqwest. The manifest scan sees only `some-wrapper` (paired
+# fixtures/transitive.toml) and passes; this lock scan must catch `reqwest` with the chain named.
+# Seen-to-fail evidence: records/experiments/2026-08-29-fi6-lock-scan-transcript.md.
+version = 4
+
+[[package]]
+name = "audit-fixture-transitive"
+version = "0.0.0"
+dependencies = [
+ "some-wrapper",
+]
+
+[[package]]
+name = "some-wrapper"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0000000000000000000000000000000000000000000000000000000000000001"
+dependencies = [
+ "reqwest",
+]
+
+[[package]]
+name = "reqwest"
+version = "0.12.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0000000000000000000000000000000000000000000000000000000000000002"

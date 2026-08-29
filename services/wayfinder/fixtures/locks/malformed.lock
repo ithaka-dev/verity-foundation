@@ -1,0 +1,4 @@
+# FI-6 operational fixture — deliberately invalid TOML (unterminated table header), asserting the
+# exit-2 path (tomllib.TOMLDecodeError) through main(), mirroring fixtures/malformed.toml.
+[[package
+name = "audit-fixture-malformed"

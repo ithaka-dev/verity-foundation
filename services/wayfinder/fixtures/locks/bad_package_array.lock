@@ -1,0 +1,7 @@
+# FI-6 operational fixture (review S2) — `package` is present but not a list, and not even
+# iterable (a bare integer, not a table or a string) — deliberately chosen so removing
+# `locked_packages`'s `isinstance(raw, list)` guard produces an uncaught `TypeError` rather than
+# being caught anyway by the entry-is-a-table guard downstream (an earlier draft used a table,
+# which iterates to a non-Mapping key and gets caught regardless — this isolates the check).
+version = 4
+package = 42

@@ -1,0 +1,4 @@
+# FI-6 operational fixture (review S2) — the `package` array contains a bare string instead of a
+# table. Exercises `locked_packages`'s `isinstance(entry, Mapping)` guard.
+version = 4
+package = ["not-a-table"]

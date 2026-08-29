@@ -1,0 +1,14 @@
+# FI-6 fixture (review S3) — a v1-style lock: no top-level `version` key (defaults to 1 per §1.5)
+# and the v1/v2 parenthesized dependency spelling `"name x.y.z (registry+...)"`. Pins the claim
+# that both are handled, rather than leaving it argued in a comment nothing exercises.
+[[package]]
+name = "audit-fixture-v1-style"
+version = "0.0.0"
+dependencies = [
+ "reqwest 0.12.9 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "reqwest"
+version = "0.12.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"

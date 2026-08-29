@@ -1,0 +1,7 @@
+# FI-6 operational fixture (review S2) — a `[[package]]` entry with a non-string `name`.
+# Exercises `locked_packages`'s missing/non-string name/version guard.
+version = 4
+
+[[package]]
+name = 123
+version = "0.0.0"
