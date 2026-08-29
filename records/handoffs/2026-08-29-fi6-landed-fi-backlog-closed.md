@@ -1,7 +1,7 @@
 # Handoff: FI-6 landed and CI-green — every numbered board issue is closed; next work is an operator choice
 
 **Date:** 2026-08-29
-**Status:** open
+**Status:** superseded by [`2026-08-29-carried-followups-landed.md`](2026-08-29-carried-followups-landed.md)
 **Author:** Claude (agent), session URL `session_01BpZeUkzKSxGDhXs6JBbyJ3` (same session as the
 predecessor — newest-transcript heuristic resolves it: `713f667b-3144-4c3d-b4c7-e2ef832193e0.jsonl`)
 **Repo(s):** `verity-foundation` only
